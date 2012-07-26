@@ -2039,10 +2039,10 @@
 											var errorMsg = parseXMLHttpResponse(XMLHttpResponse);
 											alert("addNetworkServiceProvider&name=Netscaler failed. Error: " + errorMsg);
 										}
-									});
-								});
-							}						
-						}, 3000); 								
+									});							
+								}, 3000); 
+							}		
+            });						
 						//add netscaler provider (end)
 					}
 					else { //selectedNetworkOfferingHavingNetscaler == false
