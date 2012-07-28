@@ -279,14 +279,15 @@
 
   <!-- ===================== Network Elements ===================== -->
 
-  <target name="compile-network-elements" depends="compile-netscaler, compile-f5, compile-srx, compile-ovs, compile-elb, compile-nicira-nvp" description="Compile all network elements"/>
-  <target name="build-network-elements" depends="build-netscaler, build-f5, build-srx, build-ovs, build-elb, build-nicira-nvp" description="build all network elements"/>
+  <target name="compile-network-elements" depends="compile-netscaler, compile-srx, compile-ovs, compile-elb, compile-nicira-nvp" description="Compile all network elements"/>
+  <target name="build-network-elements" depends="build-netscaler, build-srx, build-ovs, build-elb, build-nicira-nvp" description="build all network elements"/>
  
   <target name="compile-netscaler" depends="-init, compile-server" description="Compile NetScaler plugin">
   	<ant antfile="${base.dir}/plugins/network-elements/netscaler/build.xml" target="build"/>
   </target>
   <target name="build-netscaler" depends="compile-netscaler"/>
 
+  <!-- Because F5 library is licensed under the GPL and necessary for compilation it is turned off by default -->
   <target name="compile-f5" depends="-init, compile-server" description="Compile F5 plugin">
   	<ant antfile="${base.dir}/plugins/network-elements/f5/build.xml" target="build"/>
   </target>
