@@ -15,6 +15,9 @@
    <get src="http://repo1.maven.org/maven2/javax/mail/mail/1.4/mail-1.4.jar" dest="deps/email-1.4.jar" usetimestamp="true" />
    <get src="http://repo1.maven.org/maven2/com/google/code/gson/gson/1.7.2/gson-1.7.2.jar" dest="deps/gson-1.7.2.jar" usetimestamp="true" />
    <get src="http://repo1.maven.org/maven2/org/apache/httpcomponents/httpcore/4.2.1/httpcore-4.2.1.jar" dest="deps/httpcore-4.2.1.jar" usetimestamp="true" />
+   <get src="http://repo1.maven.org/maven2/org/jasypt/jasypt/1.8/jasypt-1.8.jar" dest="deps/jasypt-1.9.jar" usetimestamp="true" />
+   <get src="http://repo1.maven.org/maven2/com/jcraft/jsch/0.1.42/jsch-0.1.42.jar" dest="deps/jsch-0.1.42.jar" usetimestamp="true" />
+   <get src="http://repo1.maven.org/maven2/junit/junit/4.10/junit-4.10.jar" dest="deps/junit-4.10.jar" usetimestamp="true" />
   </target>
 
   <target name="resolveOptBuildDeps">
@@ -32,6 +35,7 @@
     <get src="http://repo1.maven.org/maven2/commons-discovery/commons-discovery/0.5/commons-discovery-0.5.jar" dest="deps/common-discovery-0.5.jar" usetimestamp="true" />
     <get src="http://repo1.maven.org/maven2/commons-lang/commons-lang/2.6/commons-lang-2.6.jar" dest="deps/commons-lang-2.6.jar" usetimestamp="true" />
     <get src="http://repo1.maven.org/maven2/commons-logging/commons-logging/1.1.1/commons-logging-1.1.1.jar" dest="deps/commons-loggin-1.1.1.jar" usetimestamp="true" />
+    <get src="http://search.maven.org/remotecontent?filepath=jstl/jstl/1.2/jstl-1.2.jar" dest="deps/jstl-1.2.jar" usetimestamp="true" />
   </target>
 
 </project>
