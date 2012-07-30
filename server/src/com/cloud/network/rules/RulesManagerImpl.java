@@ -331,9 +331,11 @@ public class RulesManagerImpl implements RulesManager, RulesService, Manager {
     }
 
     @Override
+    @ActionEvent(eventType = EventTypes.EVENT_ENABLE_STATIC_NAT, eventDescription = "enabling static nat")
     public boolean enableStaticNat(long ipId, long vmId, boolean isSystemVm) throws NetworkRuleConflictException, ResourceUnavailableException {
         UserContext ctx = UserContext.current();
         Account caller = ctx.getCaller();
+        UserContext.current().setEventDetails("Ip Id: " + ipId);
 
         IPAddressVO ipAddress = _ipAddressDao.findById(ipId);
         if (ipAddress == null) {
@@ -1052,6 +1054,7 @@ public class RulesManagerImpl implements RulesManager, RulesService, Manager {
     }
 
     @Override
+    @ActionEvent(eventType = EventTypes.EVENT_DISABLE_STATIC_NAT, eventDescription = "disabling static nat", async=true)
     public boolean disableStaticNat(long ipId) throws ResourceUnavailableException, NetworkRuleConflictException, InsufficientAddressCapacityException {
         UserContext ctx = UserContext.current();
         Account caller = ctx.getCaller();
@@ -1170,13 +1173,58 @@ public class RulesManagerImpl implements RulesManager, RulesService, Manager {
 
     @Override
     public boolean applyStaticNatForIp(long sourceIpId, boolean continueOnError, Account caller, boolean forRevoke) {
-
-        List<StaticNat> staticNats = new ArrayList<StaticNat>();
         IpAddress sourceIp = _ipAddressDao.findById(sourceIpId);
+        
+        List<StaticNat> staticNats = createStaticNatForIp(sourceIp, caller, forRevoke);
 
+        if (staticNats != null && !staticNats.isEmpty()) {
+            try {
+                if (!_networkMgr.applyStaticNats(staticNats, continueOnError)) {
+                    return false;
+                }
+            } catch (ResourceUnavailableException ex) {
+                s_logger.warn("Failed to create static nat rule due to ", ex);
+                return false;
+            }
+        }
+
+        return true;
+    }
+    
+    
+    @Override
+    public boolean applyStaticNatForNetwork(long networkId, boolean continueOnError, Account caller, boolean forRevoke) {
+        List<? extends IpAddress> staticNatIps = _ipAddressDao.listStaticNatPublicIps(networkId);
+        
+        List<StaticNat> staticNats = new ArrayList<StaticNat>();
+        for (IpAddress staticNatIp : staticNatIps) {
+            staticNats.addAll(createStaticNatForIp(staticNatIp, caller, forRevoke));
+        }
+
+        if (staticNats != null && !staticNats.isEmpty()) {
+            if (forRevoke) {
+                s_logger.debug("Found " + staticNats.size() + " static nats to disable for network id " + networkId);
+            }
+            try {
+                if (!_networkMgr.applyStaticNats(staticNats, continueOnError)) {
+                    return false;
+                }
+            } catch (ResourceUnavailableException ex) {
+                s_logger.warn("Failed to create static nat rule due to ", ex);
+                return false;
+            }
+        } else {
+            s_logger.debug("Found 0 static nat rules to apply for network id " + networkId);
+        }
+
+        return true;
+    }
+
+    protected List<StaticNat> createStaticNatForIp(IpAddress sourceIp, Account caller, boolean forRevoke) {
+        List<StaticNat> staticNats = new ArrayList<StaticNat>();
         if (!sourceIp.isOneToOneNat()) {
-            s_logger.debug("Source ip id=" + sourceIpId + " is not one to one nat");
-            return true;
+            s_logger.debug("Source ip id=" + sourceIp + " is not one to one nat");
+            return staticNats;
         }
 
         Long networkId = sourceIp.getAssociatedWithNetworkId();
@@ -1187,8 +1235,8 @@ public class RulesManagerImpl implements RulesManager, RulesService, Manager {
         UserVmVO vm = _vmDao.findById(sourceIp.getAssociatedWithVmId());
         Network network = _networkMgr.getNetwork(networkId);
         if (network == null) {
-        	CloudRuntimeException ex = new CloudRuntimeException("Unable to find an ip address to map to specified vm id");
-        	ex.addProxyObject(vm, vm.getId(), "vmId");            
+            CloudRuntimeException ex = new CloudRuntimeException("Unable to find an ip address to map to specified vm id");
+            ex.addProxyObject(vm, vm.getId(), "vmId");
             throw ex;
         }
 
@@ -1206,19 +1254,10 @@ public class RulesManagerImpl implements RulesManager, RulesService, Manager {
             dstIp = _networkMgr.getIpInNetwork(sourceIp.getAssociatedWithVmId(), networkId);
         }
 
-        StaticNatImpl staticNat = new StaticNatImpl(sourceIp.getAllocatedToAccountId(), sourceIp.getAllocatedInDomainId(), networkId, sourceIpId, dstIp, forRevoke);
+        StaticNatImpl staticNat = new StaticNatImpl(sourceIp.getAllocatedToAccountId(), sourceIp.getAllocatedInDomainId(),
+                networkId, sourceIp.getId(), dstIp, forRevoke);
         staticNats.add(staticNat);
-
-        try {
-            if (!_networkMgr.applyStaticNats(staticNats, continueOnError)) {
-                return false;
-            }
-        } catch (ResourceUnavailableException ex) {
-            s_logger.warn("Failed to create static nat rule due to ", ex);
-            return false;
-        }
-
-        return true;
+        return staticNats;
     }
 
     @Override

@@ -126,6 +126,7 @@ import com.cloud.network.dao.PhysicalNetworkServiceProviderDao;
 import com.cloud.network.dao.PhysicalNetworkServiceProviderVO;
 import com.cloud.network.dao.PhysicalNetworkTrafficTypeDao;
 import com.cloud.network.dao.PhysicalNetworkTrafficTypeVO;
+import com.cloud.network.element.ConnectivityProvider;
 import com.cloud.network.element.DhcpServiceProvider;
 import com.cloud.network.element.FirewallServiceProvider;
 import com.cloud.network.element.IpDeployer;
@@ -913,6 +914,10 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
                     deployer = ((PortForwardingServiceProvider) element).getIpDeployer(network);
                 } else if (element instanceof RemoteAccessVPNServiceProvider) {
                     deployer = ((RemoteAccessVPNServiceProvider) element).getIpDeployer(network);
+                } else if (element instanceof ConnectivityProvider) {
+                    // Nothing to do
+                    s_logger.debug("ConnectivityProvider " + element.getClass().getSimpleName() + " has no ip associations");
+                    continue;
                 } else {
                     throw new CloudRuntimeException("Fail to get ip deployer for element: " + element);
                 }
@@ -2548,6 +2553,11 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
                     throw new InvalidParameterValueException("Only Account specific Isolated network with sourceNat service disabled are allowed in security group enabled zone");
                 }
             }
+            
+            //don't allow eip/elb networks in Advance zone
+            if (ntwkOff.getElasticIp() || ntwkOff.getElasticLb()) {
+                throw new InvalidParameterValueException("Elastic IP and Elastic LB services are supported in zone of type " + NetworkType.Basic);
+            }
         }
 
         // VlanId can be specified only when network offering supports it
@@ -3010,6 +3020,7 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
             }
         }
 
+        sc.addAnd("id", SearchCriteria.Op.SC, accountSC);
         return _networksDao.search(sc, searchFilter);
     }
 
@@ -3214,7 +3225,10 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
                         s_logger.debug("Sending destroy to " + element);
                     }
 
-                    element.destroy(network);
+                    if (!element.destroy(network)) {
+                        success = false;
+                        s_logger.warn("Unable to complete destroy of the network: failed to destroy network element " + element.getName());
+                    }
                 } catch (ResourceUnavailableException e) {
                     s_logger.warn("Unable to complete destroy of the network due to element: " + element.getName(), e);
                     success = false;
@@ -3224,7 +3238,7 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
                 } catch (Exception e) {
                     s_logger.warn("Unable to complete destroy of the network due to element: " + element.getName(), e);
                     success = false;
-                }
+                } 
             }
         }
 
@@ -5680,6 +5694,12 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
             }
         } catch (ResourceUnavailableException ex) {
             s_logger.warn("Failed to cleanup firewall rules as a part of shutdownNetworkRules due to ", ex);
+            success = false;
+        }
+
+        //release all static nats for the network
+        if (!_rulesMgr.applyStaticNatForNetwork(networkId, false, caller, true)) {
+            s_logger.warn("Failed to disable static nats as part of shutdownNetworkRules for network id " + networkId);
             success = false;
         }
 

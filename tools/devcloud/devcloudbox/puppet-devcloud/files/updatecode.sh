@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,18 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-description "Stop CloudStack VMs on shutdown"
-author "Manuel Amador (Rudd-O) <manuel@vmops.com>"
-
-start on stopping libvirt-bin
-
-task
-script
-	curr_runlevel=`runlevel | tail -c 2`
-	if [ "$curr_runlevel" = "6" -o "$curr_runlevel" = "0" ] ; then
-		for a in `virsh list | awk ' /^ +[0-9]+ [vri]-([0-9]+?)-/ { print $2 } '` ; do
-			echo Destroying CloudStack VM $a
-			virsh destroy $a
-		done
-	fi
-end script
+cd /opt/cloudstack
+git clone https://git-wip-us.apache.org/repos/asf/incubator-cloudstack.git
+rc=$?
+if [[ $rc != 0 ]] ; then
+    cd /opt/cloudstack/incubator-cloudstack
+    git pull origin master
+fi
+exit 0

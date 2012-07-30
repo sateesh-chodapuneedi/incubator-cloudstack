@@ -1477,6 +1477,7 @@ CREATE TABLE  `cloud`.`storage_pool` (
   `available_bytes` bigint unsigned,
   `capacity_bytes` bigint unsigned,
   `host_address` varchar(255) NOT NULL COMMENT 'FQDN or IP of storage server',
+  `user_info` varchar(255) NULL COMMENT 'Authorization information for the storage pool. Used by network filesystems',
   `path` varchar(255) NOT NULL COMMENT 'Filesystem path that is shared',
   `created` datetime COMMENT 'date the pool created',
   `removed` datetime COMMENT 'date removed if not null',
@@ -1999,7 +2000,6 @@ CREATE TABLE `cloud`.`physical_network_service_providers` (
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_pnetwork_service_providers__physical_network_id` FOREIGN KEY (`physical_network_id`) REFERENCES `physical_network`(`id`) ON DELETE CASCADE,
   CONSTRAINT `uc_service_providers__uuid` UNIQUE (`uuid`),
-  UNIQUE KEY(`physical_network_id`, `provider_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 CREATE TABLE `cloud`.`external_load_balancer_devices` (

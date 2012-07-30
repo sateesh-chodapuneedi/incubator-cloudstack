@@ -344,7 +344,8 @@ public class UserVmManagerImpl implements UserVmManager, UserVmService, Manager 
     SecurityGroupVMMapDao _securityGroupVMMapDao;
     @Inject
     protected ItWorkDao _workDao;
-    VolumeHostDao _volumeHostDao;
+    @Inject
+    protected VolumeHostDao _volumeHostDao;
     @Inject
     ResourceTagDao _resourceTagDao;
 
@@ -3630,5 +3631,8 @@ public class UserVmManagerImpl implements UserVmManager, UserVmService, Manager 
         return vm;
     }
     
+	@Override
+	public void prepareStop(VirtualMachineProfile<UserVmVO> profile) {
+	}
     
 }
