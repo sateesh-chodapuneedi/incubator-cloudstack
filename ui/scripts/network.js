@@ -37,7 +37,7 @@
       var allowedActions = args.context.actions;
       var disallowedActions = [];
       var item = args.context.item;
-      var status = item.state;   
+      var status = item.state;
 
       if (status == 'Destroyed' ||
           status == 'Releasing' ||
@@ -46,71 +46,71 @@
           status == 'Allocating' ||
           item.account == 'system' ||
           item.issystem == true ) {
-        return [];
+            return [];
+          }
+
+      if(item.networkOfferingConserveMode == false) {
+        /*
+         (1) If IP is SourceNat, no StaticNat/VPN/PortForwarding/LoadBalancer can be enabled/added.
+         */
+        if (item.issourcenat == true){
+          disallowedActions.push('enableStaticNAT');
+          disallowedActions.push('enableVPN');
+        }
+
+        /*
+         (2) If IP is non-SourceNat, show StaticNat/VPN/PortForwarding/LoadBalancer at first.
+         1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
+         2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
+         3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
+         4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
+         */
+        else { //item.issourcenat == false
+          if (item.isstaticnat) { //1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
+            disallowedActions.push('enableVPN');
+          }
+          if (item.vpnenabled) { //2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
+            disallowedActions.push('enableStaticNAT');
+          }
+
+          //3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
+          $.ajax({
+            url: createURL('listPortForwardingRules'),
+            data: {
+              ipaddressid: item.id,
+              listAll: true
+            },
+            dataType: 'json',
+            async: false,
+            success: function(json) {
+              var rules = json.listportforwardingrulesresponse.portforwardingrule;
+              if(rules != null && rules.length > 0) {
+                disallowedActions.push('enableVPN');
+                disallowedActions.push('enableStaticNAT');
+              }
+            }
+          });
+
+          //4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
+          $.ajax({
+            url: createURL('listLoadBalancerRules'),
+            data: {
+              publicipid: item.id,
+              listAll: true
+            },
+            dataType: 'json',
+            async: false,
+            success: function(json) {
+              var rules = json.listloadbalancerrulesresponse.loadbalancerrule;
+              if(rules != null && rules.length > 0) {
+                disallowedActions.push('enableVPN');
+                disallowedActions.push('enableStaticNAT');
+              }
+            }
+          });
+        }
       }
-				
-			if(item.networkOfferingConserveMode == false) {			 
-				/*
-				(1) If IP is SourceNat, no StaticNat/VPN/PortForwarding/LoadBalancer can be enabled/added. 
-				*/
-	      if (item.issourcenat == true){
-					disallowedActions.push('enableStaticNAT');
-					disallowedActions.push('enableVPN');
-				}			
-				
-				/*
-				(2) If IP is non-SourceNat, show StaticNat/VPN/PortForwarding/LoadBalancer at first.
-				1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
-				2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
-				3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
-				4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
-				*/
-				else { //item.issourcenat == false				   
-					if (item.isstaticnat) { //1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
-					  disallowedActions.push('enableVPN');
-					}
-					if (item.vpnenabled) { //2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
-					  disallowedActions.push('enableStaticNAT');
-					}
-								 
-					//3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
-					$.ajax({
-						url: createURL('listPortForwardingRules'),
-						data: {
-							ipaddressid: item.id,
-							listAll: true
-						},
-						dataType: 'json',
-						async: false,
-						success: function(json) {							
-							var rules = json.listportforwardingrulesresponse.portforwardingrule;
-							if(rules != null && rules.length > 0) {
-							  disallowedActions.push('enableVPN');
-								disallowedActions.push('enableStaticNAT'); 
-							}
-						}
-					});	
-										
-					//4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
-					$.ajax({
-						url: createURL('listLoadBalancerRules'),
-						data: {
-							publicipid: item.id,
-							listAll: true
-						},
-						dataType: 'json',
-						async: false,
-						success: function(json) {
-							var rules = json.listloadbalancerrulesresponse.loadbalancerrule;
-							if(rules != null && rules.length > 0) {
-							  disallowedActions.push('enableVPN');
-								disallowedActions.push('enableStaticNAT'); 
-							}
-						}
-					});		
-				}			  				
-			}			
-			
+
       if (item.isstaticnat) {
         disallowedActions.push('enableStaticNAT');
       } else {
@@ -145,7 +145,7 @@
     securityGroups: function(args) {
       var allowedActions = [];
       var isSecurityGroupOwner = isAdmin() || isDomainAdmin() ||
-        args.context.item.account == args.context.users[0].account;
+            args.context.item.account == args.context.users[0].account;
 
       if (isSecurityGroupOwner &&
           args.context.item.state != 'Destroyed' &&
@@ -251,8 +251,8 @@
                   networkOfferingId: {
                     label: 'label.network.offering',
                     validation: { required: true },
-										dependsOn: 'zoneId',
-                    select: function(args) {										 
+                    dependsOn: 'zoneId',
+                    select: function(args) {
                       $.ajax({
                         url: createURL('listNetworkOfferings&zoneid=' + args.zoneId),
                         data: {
@@ -317,16 +317,16 @@
             vlan: { label: 'label.vlan' },
             cidr: { label: 'label.cidr' }
             /*
-            state: {
-              label: 'State',
-                indicator: {
-                'Implemented': 'on',
-                'Setup': 'on',
-                'Allocated': 'on',
-                'Destroyed': 'off'
-              }
-            }
-            */
+             state: {
+             label: 'State',
+             indicator: {
+             'Implemented': 'on',
+             'Setup': 'on',
+             'Allocated': 'on',
+             'Destroyed': 'off'
+             }
+             }
+             */
           },
           dataProvider: function(args) {
             var array1 = [];
@@ -348,7 +348,7 @@
               dataType: 'json',
               async: false,
               success: function(data) {
-                args.response.success({								  
+                args.response.success({
                   data: data.listnetworksresponse.network
                 });
               },
@@ -513,29 +513,29 @@
                 createForm: {
                   title: 'label.restart.network',
                   desc: 'message.restart.network',
-                  preFilter: function(args) {									  
-										var zoneObj;
-										$.ajax({
-										  url: createURL("listZones&id=" + args.context.networks[0].zoneid),
-											dataType: "json",
-											async: false,
-											success: function(json){											  
-											  zoneObj = json.listzonesresponse.zone[0];												
-											}
-										});																				
-										if(zoneObj.networktype == "Basic") {										  								
-											args.$form.find('.form-item[rel=cleanup]').find('input').removeAttr('checked'); //unchecked
-											args.$form.find('.form-item[rel=cleanup]').hide(); //hidden
-										}
-										else {										  												
-											args.$form.find('.form-item[rel=cleanup]').find('input').attr('checked', 'checked'); //checked											
-											args.$form.find('.form-item[rel=cleanup]').css('display', 'inline-block'); //shown
-                    }											
-									},
-									fields: {
+                  preFilter: function(args) {
+                    var zoneObj;
+                    $.ajax({
+                      url: createURL("listZones&id=" + args.context.networks[0].zoneid),
+                      dataType: "json",
+                      async: false,
+                      success: function(json){
+                        zoneObj = json.listzonesresponse.zone[0];
+                      }
+                    });
+                    if(zoneObj.networktype == "Basic") {
+                      args.$form.find('.form-item[rel=cleanup]').find('input').removeAttr('checked'); //unchecked
+                      args.$form.find('.form-item[rel=cleanup]').hide(); //hidden
+                    }
+                    else {
+                      args.$form.find('.form-item[rel=cleanup]').find('input').attr('checked', 'checked'); //checked
+                      args.$form.find('.form-item[rel=cleanup]').css('display', 'inline-block'); //shown
+                    }
+                  },
+                  fields: {
                     cleanup: {
                       label: 'label.clean.up',
-                      isBoolean: true  
+                      isBoolean: true
                     }
                   }
                 },
@@ -545,7 +545,7 @@
                   }
                 },
                 action: function(args) {
-                  var array1 = [];									
+                  var array1 = [];
                   array1.push("&cleanup=" + (args.data.cleanup == "on"));
                   $.ajax({
                     url: createURL("restartNetwork&id=" + args.context.networks[0].id + array1.join("")),
@@ -760,23 +760,23 @@
 
                 tags: cloudStack.api.tags({ resourceType: 'Network', contextId: 'networks' }),
 
-                
-                dataProvider: function(args) {								 					
-								  $.ajax({
-										url: createURL("listNetworks&id=" + args.context.networks[0].id + "&listAll=true"), //pass "&listAll=true" to "listNetworks&id=xxxxxxxx" for now before API gets fixed.
+
+                dataProvider: function(args) {
+                  $.ajax({
+                    url: createURL("listNetworks&id=" + args.context.networks[0].id + "&listAll=true"), //pass "&listAll=true" to "listNetworks&id=xxxxxxxx" for now before API gets fixed.
                     data: { listAll: true },
-										dataType: "json",
-										async: true,
-										success: function(json) {								  
-											var jsonObj = json.listnetworksresponse.network[0];   
-											args.response.success(
-												{
-													actionFilter: cloudStack.actionFilter.guestNetwork,
-													data: jsonObj
-												}
-											);		
-										}
-									});			
+                    dataType: "json",
+                    async: true,
+                    success: function(json) {
+                      var jsonObj = json.listnetworksresponse.network[0];
+                      args.response.success(
+                        {
+                          actionFilter: cloudStack.actionFilter.guestNetwork,
+                          data: jsonObj
+                        }
+                      );
+                    }
+                  });
                 }
               },
 
@@ -843,6 +843,13 @@
                           custom: {
                             buttonLabel: 'label.configure',
                             action: cloudStack.lbStickyPolicy.dialog()
+                          }
+                        },
+                        'autoScale': {
+                          label: 'AutoScale',
+                          custom: {
+                            buttonLabel: 'label.configure',
+                            action: cloudStack.uiCustom.autoscaler(cloudStack.autoscaler)
                           }
                         },
                         'add-vm': {
@@ -965,7 +972,7 @@
         title: 'label.menu.ipaddresses',
         listView: {
           id: 'ipAddresses',
-          label: 'IPs',          
+          label: 'IPs',
           fields: {
             ipaddress: {
               label: 'IP',
@@ -978,8 +985,8 @@
               }
             },
             zonename: { label: 'label.zone' },
-            //vlanname: { label: 'VLAN' },   					  
-						virtualmachinedisplayname: { label: 'label.vm.name' },						 
+            //vlanname: { label: 'VLAN' },
+            virtualmachinedisplayname: { label: 'label.vm.name' },
             state: {
               converter: function(str) {
                 // For localization
@@ -1234,14 +1241,14 @@
               },
               enableStaticNAT: {
                 label: 'label.action.enable.static.NAT',
-                
+
                 action: {
                   noAdd: true,
                   custom: cloudStack.uiCustom.enableStaticNAT({
                     // VPC
                     tierSelect: function(args) {
                       args.$tierSelect.hide(); // Hidden by default
-                      
+
                       // Determine if tiers are supported here
                       var enableTiers = false;
 
@@ -1270,9 +1277,9 @@
                             $.extend(data, {
                               account: args.context.ipAddresses[0].account,
                               domainid: args.context.ipAddresses[0].domainid
-                            }); 
+                            });
                           }
-                          
+
                           $.ajax({
                             url: createURL('listVirtualMachines'),
                             data: data,
@@ -1437,38 +1444,38 @@
             tabs: {
               details: {
                 title: 'label.details',
-								
-								preFilter: function(args) {
-								  var hiddenFields = [];								
-									var zoneObj;
-									$.ajax({
-									  url: createURL("listZones&id=" + args.context.ipAddresses[0].zoneid),
-										dataType: "json",
-										async: false,
-										success: function(json) {										  
-											zoneObj = json.listzonesresponse.zone[0];											
-										}
-									});							
-									if(zoneObj.networktype == "Advanced") {
-									  hiddenFields.push("issystem");
-										hiddenFields.push("purpose");
-									}																	
-									return hiddenFields;								
-								},
-								
+
+                preFilter: function(args) {
+                  var hiddenFields = [];
+                  var zoneObj;
+                  $.ajax({
+                    url: createURL("listZones&id=" + args.context.ipAddresses[0].zoneid),
+                    dataType: "json",
+                    async: false,
+                    success: function(json) {
+                      zoneObj = json.listzonesresponse.zone[0];
+                    }
+                  });
+                  if(zoneObj.networktype == "Advanced") {
+                    hiddenFields.push("issystem");
+                    hiddenFields.push("purpose");
+                  }
+                  return hiddenFields;
+                },
+
                 fields: [
                   {
                     ipaddress: { label: 'IP' }
                   },
                   {
-                    id: { label: 'label.id' },    
+                    id: { label: 'label.id' },
                     networkid: { label: 'label.network.id' },
                     associatednetworkid: { label: 'label.associated.network.id' },
                     state: { label: 'label.state' },
                     issourcenat: { label: 'label.source.nat', converter: cloudStack.converters.toBooleanText },
                     isstaticnat: { label: 'label.static.nat', converter: cloudStack.converters.toBooleanText },
                     issystem: { label: 'label.is.system', converter: cloudStack.converters.toBooleanText }, //(basic zone only)
-										purpose: { label: 'label.purpose' }, //(basic zone only) When an IP is system-generated, the purpose it serves can be Lb or static nat.
+                    purpose: { label: 'label.purpose' }, //(basic zone only) When an IP is system-generated, the purpose it serves can be Lb or static nat.
                     virtualmachinedisplayname: { label: 'label.vm.name' },
                     domain: { label: 'label.domain' },
                     account: { label: 'label.account' },
@@ -1476,7 +1483,7 @@
                     vlanname: { label: 'label.vlan' }
                   }
                 ],
- 
+
                 tags: cloudStack.api.tags({ resourceType: 'PublicIpAddress', contextId: 'ipAddresses' }),
 
                 dataProvider: function(args) {
@@ -1485,47 +1492,47 @@
                   // Get network data
                   $.ajax({
                     url: createURL('listPublicIpAddresses'),
-                    data: {                      
+                    data: {
                       id: args.context.ipAddresses[0].id
                     },
                     dataType: "json",
                     async: true,
                     success: function(json) {
-                      var ipObj = items[0];	
-											$.ajax({
-												url: createURL('listNetworkOfferings'),
-												data: {
-													id: args.context.networks[0].networkofferingid
-												},
-												dataType: 'json',
-												async: true,
-												success: function(json) {		
-													var networkOfferingObj = json.listnetworkofferingsresponse.networkoffering[0];
-													ipObj.networkOfferingConserveMode= networkOfferingObj.conservemode; 
-																									
-													// Get VPN data
-													$.ajax({
-														url: createURL('listRemoteAccessVpns'),
-														data: {
-															listAll: true,
-															publicipid: ipObj.id
-														},
-														dataType: 'json',
-														async: true,
-														success: function(vpnResponse) {
-															var isVPNEnabled = vpnResponse.listremoteaccessvpnsresponse.count;
-															if (isVPNEnabled) {
-																ipObj.vpnenabled = true;
-																ipObj.remoteaccessvpn = vpnResponse.listremoteaccessvpnsresponse.remoteaccessvpn[0];
-															};
-															args.response.success({
-																actionFilter: actionFilters.ipAddress,
-																data: ipObj
-															});
-														}
-													});													
-												}
-											});					
+                      var ipObj = items[0];
+                      $.ajax({
+                        url: createURL('listNetworkOfferings'),
+                        data: {
+                          id: args.context.networks[0].networkofferingid
+                        },
+                        dataType: 'json',
+                        async: true,
+                        success: function(json) {
+                          var networkOfferingObj = json.listnetworkofferingsresponse.networkoffering[0];
+                          ipObj.networkOfferingConserveMode= networkOfferingObj.conservemode;
+
+                          // Get VPN data
+                          $.ajax({
+                            url: createURL('listRemoteAccessVpns'),
+                            data: {
+                              listAll: true,
+                              publicipid: ipObj.id
+                            },
+                            dataType: 'json',
+                            async: true,
+                            success: function(vpnResponse) {
+                              var isVPNEnabled = vpnResponse.listremoteaccessvpnsresponse.count;
+                              if (isVPNEnabled) {
+                                ipObj.vpnenabled = true;
+                                ipObj.remoteaccessvpn = vpnResponse.listremoteaccessvpnsresponse.remoteaccessvpn[0];
+                              };
+                              args.response.success({
+                                actionFilter: actionFilters.ipAddress,
+                                data: ipObj
+                              });
+                            }
+                          });
+                        }
+                      });
                     },
                     error: function(data) {
                       args.response.error(parseXMLHttpResponse(data));
@@ -1563,70 +1570,70 @@
                         });
                       }
                     });
-																				
-										if(args.context.ipAddresses[0].networkOfferingConserveMode == false) {			 
-											/*
-											(1) If IP is SourceNat, no StaticNat/VPN/PortForwarding/LoadBalancer can be enabled/added. 
-											*/
-											if (args.context.ipAddresses[0].issourcenat){
-											  disallowedActions.push("portForwarding");			
-											  disallowedActions.push("loadBalancing");											  									
-											}
-											
-											/*
-											(2) If IP is non-SourceNat, show StaticNat/VPN/PortForwarding/LoadBalancer at first.
-											1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
-											2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
-											3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
-											4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
-											*/
-											else { //args.context.ipAddresses[0].issourcenat == false				   
-												if (args.context.ipAddresses[0].isstaticnat) { //1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
-												  disallowedActions.push("portForwarding");
-													disallowedActions.push("loadBalancing");
-												}
-												if (args.context.ipAddresses[0].vpnenabled) { //2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
-													disallowedActions.push("portForwarding");
-													disallowedActions.push("loadBalancing"); 
-												}
-																																					 
-												//3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
-												$.ajax({
-													url: createURL('listPortForwardingRules'),
-													data: {
-														ipaddressid: args.context.ipAddresses[0].id,
-														listAll: true
-													},
-													dataType: 'json',
-													async: false,
-													success: function(json) {
-														// Get instance
-														var rules = json.listportforwardingrulesresponse.portforwardingrule;
-														if(rules != null && rules.length > 0) {																
-															disallowedActions.push("loadBalancing"); 
-														}
-													}
-												});								
-												
-												//4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
-												$.ajax({
-													url: createURL('listLoadBalancerRules'),
-													data: {
-														publicipid: args.context.ipAddresses[0].id,
-														listAll: true
-													},
-													dataType: 'json',
-													async: false,
-													success: function(json) {
-														var rules = json.listloadbalancerrulesresponse.loadbalancerrule;
-														if(rules != null && rules.length > 0) {
-															disallowedActions.push("portForwarding");
-														}
-													}
-												});															
-											}						
-										}
-																				
+
+                    if(args.context.ipAddresses[0].networkOfferingConserveMode == false) {
+                      /*
+                       (1) If IP is SourceNat, no StaticNat/VPN/PortForwarding/LoadBalancer can be enabled/added.
+                       */
+                      if (args.context.ipAddresses[0].issourcenat){
+                        disallowedActions.push("portForwarding");
+                        disallowedActions.push("loadBalancing");
+                      }
+
+                      /*
+                       (2) If IP is non-SourceNat, show StaticNat/VPN/PortForwarding/LoadBalancer at first.
+                       1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
+                       2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
+                       3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
+                       4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
+                       */
+                      else { //args.context.ipAddresses[0].issourcenat == false
+                        if (args.context.ipAddresses[0].isstaticnat) { //1. Once StaticNat is enabled, hide VPN/PortForwarding/LoadBalancer.
+                          disallowedActions.push("portForwarding");
+                          disallowedActions.push("loadBalancing");
+                        }
+                        if (args.context.ipAddresses[0].vpnenabled) { //2. Once VPN is enabled, hide StaticNat/PortForwarding/LoadBalancer.
+                          disallowedActions.push("portForwarding");
+                          disallowedActions.push("loadBalancing");
+                        }
+
+                        //3. Once a PortForwarding rule is added, hide StaticNat/VPN/LoadBalancer.
+                        $.ajax({
+                          url: createURL('listPortForwardingRules'),
+                          data: {
+                            ipaddressid: args.context.ipAddresses[0].id,
+                            listAll: true
+                          },
+                          dataType: 'json',
+                          async: false,
+                          success: function(json) {
+                            // Get instance
+                            var rules = json.listportforwardingrulesresponse.portforwardingrule;
+                            if(rules != null && rules.length > 0) {
+                              disallowedActions.push("loadBalancing");
+                            }
+                          }
+                        });
+
+                        //4. Once a LoadBalancer rule is added, hide StaticNat/VPN/PortForwarding.
+                        $.ajax({
+                          url: createURL('listLoadBalancerRules'),
+                          data: {
+                            publicipid: args.context.ipAddresses[0].id,
+                            listAll: true
+                          },
+                          dataType: 'json',
+                          async: false,
+                          success: function(json) {
+                            var rules = json.listloadbalancerrulesresponse.loadbalancerrule;
+                            if(rules != null && rules.length > 0) {
+                              disallowedActions.push("portForwarding");
+                            }
+                          }
+                        });
+                      }
+                    }
+
                     if(networkOfferingHavingFirewallService == false)
                       disallowedActions.push("firewall");
                     if(networkOfferingHavingPortForwardingService == false)
@@ -1833,111 +1840,111 @@
 
                   vmDetails: cloudStack.sections.instances.listView.detailView,
 
-									
-									//"NAT Port Range" multiEdit screen for StaticNAT is obsolete in cloudstack 3.0 because createIpForwardingRule/deleteIpForwardingRule/listIpForwardingRules API are obsolete in cloudstack 3.0.
-									//cloudstack 3.0 is using createFirewallRule/listFirewallRules/deleteFirewallRule API for both staticNAT and non-staticNAT .
-									/*
-                  staticNAT: {
-                    noSelect: true,
-                    fields: {
-                      'protocol': {
-                        label: 'label.protocol',
-                        select: function(args) {
-                          args.response.success({
-                            data: [
-                              { name: 'tcp', description: 'TCP' },
-                              { name: 'udp', description: 'UDP' }
-                            ]
-                          });
-                        }
-                      },
-                      'startport': { edit: true, label: 'label.start.port' },
-                      'endport': { edit: true, label: 'label.end.port' },
-                      'add-rule': {
-                        label: 'label.add.rule',
-                        addButton: true
-                      }
-                    },
-                    add: {
-                      label: 'label.add',
-                      action: function(args) {
-                        $.ajax({
-                          url: createURL('createIpForwardingRule'),
-                          data: $.extend(args.data, {
-                            ipaddressid: args.context.ipAddresses[0].id
-                          }),
-                          dataType: 'json',
-                          success: function(data) {
-                            args.response.success({
-                              _custom: {
-                                jobId: data.createipforwardingruleresponse.jobid
-                              },
-                              notification: {
-                                label: 'label.add.static.nat.rule',
-                                poll: pollAsyncJobResult
-                              }
-                            });
-                          },
-                          error: function(data) {
-                            args.response.error(parseXMLHttpResponse(data));
-                          }
-                        });
-                      }
-                    },
-                    actions: {
-                      destroy: {
-                        label: 'label.remove.rule',
-                        action: function(args) {
-                          $.ajax({
-                            url: createURL('deleteIpForwardingRule'),
-                            data: {
-                              id: args.context.multiRule[0].id
-                            },
-                            dataType: 'json',
-                            async: true,
-                            success: function(data) {
-                              var jobID = data.deleteipforwardingruleresponse.jobid;
-                              args.response.success({
-                                _custom: {
-                                  jobId: jobID
-                                },
-                                notification: {
-                                  label: 'label.remove.static.nat.rule',
-                                  poll: pollAsyncJobResult
-                                }
-                              });
-                            },
-                            error: function(data) {
-                              args.response.error(parseXMLHttpResponse(data));
-                            }
-                          });
-                        }
-                      }
-                    },
-                    dataProvider: function(args) {
-                      setTimeout(function() {
-                        $.ajax({
-                          url: createURL('listIpForwardingRules'),
-                          data: {
-                            listAll: true,
-                            ipaddressid: args.context.ipAddresses[0].id
-                          },
-                          dataType: 'json',
-                          async: true,
-                          success: function(data) {
-                            args.response.success({
-                              data: data.listipforwardingrulesresponse.ipforwardingrule
-                            });
-                          },
-                          error: function(data) {
-                            args.response.error(parseXMLHttpResponse(data));
-                          }
-                        });
-                      }, 100);
-                    }
-                  },
-									*/
-									
+
+                  //"NAT Port Range" multiEdit screen for StaticNAT is obsolete in cloudstack 3.0 because createIpForwardingRule/deleteIpForwardingRule/listIpForwardingRules API are obsolete in cloudstack 3.0.
+                  //cloudstack 3.0 is using createFirewallRule/listFirewallRules/deleteFirewallRule API for both staticNAT and non-staticNAT .
+                  /*
+                   staticNAT: {
+                   noSelect: true,
+                   fields: {
+                   'protocol': {
+                   label: 'label.protocol',
+                   select: function(args) {
+                   args.response.success({
+                   data: [
+                   { name: 'tcp', description: 'TCP' },
+                   { name: 'udp', description: 'UDP' }
+                   ]
+                   });
+                   }
+                   },
+                   'startport': { edit: true, label: 'label.start.port' },
+                   'endport': { edit: true, label: 'label.end.port' },
+                   'add-rule': {
+                   label: 'label.add.rule',
+                   addButton: true
+                   }
+                   },
+                   add: {
+                   label: 'label.add',
+                   action: function(args) {
+                   $.ajax({
+                   url: createURL('createIpForwardingRule'),
+                   data: $.extend(args.data, {
+                   ipaddressid: args.context.ipAddresses[0].id
+                   }),
+                   dataType: 'json',
+                   success: function(data) {
+                   args.response.success({
+                   _custom: {
+                   jobId: data.createipforwardingruleresponse.jobid
+                   },
+                   notification: {
+                   label: 'label.add.static.nat.rule',
+                   poll: pollAsyncJobResult
+                   }
+                   });
+                   },
+                   error: function(data) {
+                   args.response.error(parseXMLHttpResponse(data));
+                   }
+                   });
+                   }
+                   },
+                   actions: {
+                   destroy: {
+                   label: 'label.remove.rule',
+                   action: function(args) {
+                   $.ajax({
+                   url: createURL('deleteIpForwardingRule'),
+                   data: {
+                   id: args.context.multiRule[0].id
+                   },
+                   dataType: 'json',
+                   async: true,
+                   success: function(data) {
+                   var jobID = data.deleteipforwardingruleresponse.jobid;
+                   args.response.success({
+                   _custom: {
+                   jobId: jobID
+                   },
+                   notification: {
+                   label: 'label.remove.static.nat.rule',
+                   poll: pollAsyncJobResult
+                   }
+                   });
+                   },
+                   error: function(data) {
+                   args.response.error(parseXMLHttpResponse(data));
+                   }
+                   });
+                   }
+                   }
+                   },
+                   dataProvider: function(args) {
+                   setTimeout(function() {
+                   $.ajax({
+                   url: createURL('listIpForwardingRules'),
+                   data: {
+                   listAll: true,
+                   ipaddressid: args.context.ipAddresses[0].id
+                   },
+                   dataType: 'json',
+                   async: true,
+                   success: function(data) {
+                   args.response.success({
+                   data: data.listipforwardingrulesresponse.ipforwardingrule
+                   });
+                   },
+                   error: function(data) {
+                   args.response.error(parseXMLHttpResponse(data));
+                   }
+                   });
+                   }, 100);
+                   }
+                   },
+                   */
+
 
                   // Load balancing rules
                   loadBalancing: {
@@ -1945,7 +1952,7 @@
                       listView: {
                         dataProvider: function(args) {
                           var itemData = $.isArray(args.context.multiRule) && args.context.multiRule[0]['_itemData'] ?
-                            args.context.multiRule[0]['_itemData'] : [];
+                                args.context.multiRule[0]['_itemData'] : [];
                           var data = {
                             page: args.page,
                             pageSize: pageSize,
@@ -1957,7 +1964,7 @@
                             $.extend(data, {
                               account: args.context.ipAddresses[0].account,
                               domainid: args.context.ipAddresses[0].domainid
-                            }); 
+                            });
                           }
 
                           $.ajax({
@@ -2031,6 +2038,14 @@
                           action: cloudStack.lbStickyPolicy.dialog()
                         }
                       },
+                      'autoScale': {
+                        label: 'AutoScale',
+                        custom: {
+                          buttonLabel: 'label.configure',
+                          action: cloudStack.uiCustom.autoscaler(cloudStack.autoscaler)
+                        }
+                      },
+
                       'add-vm': {
                         label: 'label.add.vms',
                         addButton: true
@@ -2053,9 +2068,9 @@
 
                         var apiCmd = "createLoadBalancerRule";
                         //if(args.context.networks[0].type == "Shared")
-                          //apiCmd += "&domainid=" + g_domainid + "&account=" + g_account;
+                        //apiCmd += "&domainid=" + g_domainid + "&account=" + g_account;
                         //else //args.context.networks[0].type == "Isolated"
-                          apiCmd += "&publicipid=" + args.context.ipAddresses[0].id;
+                        apiCmd += "&publicipid=" + args.context.ipAddresses[0].id;
 
                         $.ajax({
                           url: createURL(apiCmd),
@@ -2147,7 +2162,7 @@
                                 }
                               });
                             }
-                          });             
+                          });
                         }
                       },
                       destroy:  {
@@ -2243,10 +2258,10 @@
 
                       $.ajax({
                         url: createURL('listLoadBalancerRules'),
-												data: {
-												  publicipid: args.context.ipAddresses[0].id,
-													listAll: true
-												},
+                        data: {
+                          publicipid: args.context.ipAddresses[0].id,
+                          listAll: true
+                        },
                         dataType: 'json',
                         async: true,
                         success: function(data) {
@@ -2270,7 +2285,7 @@
                               },
                               success: function(json) {
                                 var stickyPolicy = json.listlbstickinesspoliciesresponse.stickinesspolicies ?
-                                  json.listlbstickinesspoliciesresponse.stickinesspolicies[0].stickinesspolicy : null;
+                                      json.listlbstickinesspoliciesresponse.stickinesspolicies[0].stickinesspolicy : null;
 
                                 if (stickyPolicy && stickyPolicy.length) {
                                   stickyPolicy = stickyPolicy[0];
@@ -2306,7 +2321,7 @@
                                 id: item.id
                               },
                               success: function(data) {
-                                lbInstances = data.listloadbalancerruleinstancesresponse.loadbalancerruleinstance ? 
+                                lbInstances = data.listloadbalancerruleinstancesresponse.loadbalancerruleinstance ?
                                   data.listloadbalancerruleinstancesresponse.loadbalancerruleinstance : [];
                               },
                               error: function(data) {
@@ -2320,13 +2335,16 @@
                                 return $.extend(vm, {
                                   _displayName: vm.id == vm.displayname ?
                                     (vm.instancename ? vm.instancename : vm.name)
-                                    : vm.displayname
+                                  : vm.displayname
                                 });
                               }),
                               _maxLength: {
                                 name: 7
                               },
-                              sticky: stickyData
+                              sticky: stickyData,
+                              autoScale: {
+                                lbRuleID: item.id
+                              }
                             });
                           });
 
@@ -2379,7 +2397,7 @@
                             $.extend(data, {
                               account: args.context.ipAddresses[0].account,
                               domainid: args.context.ipAddresses[0].domainid
-                            }); 
+                            });
                           }
 
                           $.ajax({
@@ -2517,7 +2535,7 @@
                     },
                     dataProvider: function(args) {
                       var $multi = args.$multi;
-                      
+
                       $.ajax({
                         url: createURL('listPortForwardingRules'),
                         data: {
@@ -2535,7 +2553,7 @@
 
                           $(portForwardingData).each(function() {
                             var item = this;
-                            
+
                             item._itemName = '_displayName';
 
                             $.ajax({
@@ -2623,9 +2641,9 @@
                           $.ajax({
                             url: createURL('addVpnUser'),
                             data: $.extend(args.data, {
-															domainid: args.context.ipAddresses[0].domainid,
-															account: args.context.ipAddresses[0].account
-														}),
+                              domainid: args.context.ipAddresses[0].domainid,
+                              account: args.context.ipAddresses[0].account
+                            }),
                             dataType: 'json',
                             success: function(data) {
                               args.response.success({
@@ -2986,7 +3004,7 @@
                       success: function(data) {
                         args.response.success({
                           data: $.map(
-                            data.listsecuritygroupsresponse.securitygroup[0].ingressrule ? 
+                            data.listsecuritygroupsresponse.securitygroup[0].ingressrule ?
                               data.listsecuritygroupsresponse.securitygroup[0].ingressrule : [],
                             function(elem) {
                               return {
@@ -3163,7 +3181,7 @@
                       success: function(data) {
                         args.response.success({
                           data: $.map(
-                            data.listsecuritygroupsresponse.securitygroup[0].egressrule ? 
+                            data.listsecuritygroupsresponse.securitygroup[0].egressrule ?
                               data.listsecuritygroupsresponse.securitygroup[0].egressrule : [],
                             function(elem) {
                               return {
@@ -3226,5 +3244,5 @@
       }
     }
   };
-		
+
 })(cloudStack, jQuery);
