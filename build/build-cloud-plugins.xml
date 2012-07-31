@@ -278,10 +278,9 @@
 
 
   <!-- ===================== Network Elements ===================== -->
-
-  <target name="compile-network-elements" depends="compile-netscaler, compile-srx, compile-ovs, compile-elb, compile-nicira-nvp" description="Compile all network elements"/>
-  <target name="build-network-elements" depends="build-netscaler, build-srx, build-ovs, build-elb, build-nicira-nvp" description="build all network elements"/>
- 
+  <target name="compile-network-elements" depends="compile-srx, compile-ovs, compile-elb, compile-nicira-nvp" description="Compile all network elements"/>
+  <target name="build-network-elements" depends="build-srx, build-ovs, build-elb, build-nicira-nvp" description="build all network elements"/>
+  <!-- ##### These are currently not built by default due to licensing issues -->
   <target name="compile-netscaler" depends="-init, compile-server" description="Compile NetScaler plugin">
   	<ant antfile="${base.dir}/plugins/network-elements/netscaler/build.xml" target="build"/>
   </target>
