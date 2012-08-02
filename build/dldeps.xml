@@ -49,8 +49,9 @@
 
   <target name="resolveOptBuildDeps">
     <mkdir dir="deps" />
-    <get src="http://www.libvirt.org/maven2/org/libvirt/libvirt/0.4.7/libvirt-0.4.7.jar" 
-      dest="deps/libvirt-0.4.7.jar" usetimestamp="true" />
+    <!-- This should actually point to libvirt.org, but they don't have 0.4.8 online at /maven2 -->
+    <get src="http://zooi.widodh.nl/cloudstack/libvirt-java/libvirt-0.4.8.jar" 
+      dest="deps/libvirt-0.4.8.jar" usetimestamp="true" />
     <get src="https://www.f5se.com/repository/com/f5se/utils/iControl/1.0/iControl-1.0.jar" 
       dest="deps/iControl-1.0.jar" usetimestamp="true" />
   </target>
