@@ -81,6 +81,12 @@
       dest="deps/wsdl4j-1.6.2.jar" usetimestamp="true" />
     <get src="http://repo1.maven.org/maven2/commons-configuration/commons-configuration/1.8/commons-configuration-1.8.jar"
       dest="deps/commons-configuration-1.8.jar" usetimestamp="true" />
+    <!-- AWS runtime deps below -->
+    <mkdir dir="deps/awsapi-lib" />
+    <get src="http://mirrors.ibiblio.org/pub/mirrors/maven/antlr/jars/antlr-2.7.6.jar" 
+      dest="deps/awsapi-lib/antlr-2.7.6.jar" usetimestamp="true" />
+
+
   </target>
 
 </project>
