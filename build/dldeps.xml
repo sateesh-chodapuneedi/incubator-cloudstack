@@ -45,6 +45,12 @@
       dest="deps/jetty-6.1.26.jar" usetimestamp="true" />
    <get src="http://repo1.maven.org/maven2/org/mortbay/jetty/jetty-util/6.1.26/jetty-util-6.1.26.jar"
       dest="deps/jetty-util-6.1.26.jar" usetimestamp="true" />
+<!--############# AWS STUFF BELOW THIS LINE ####################-->
+   <get src="http://repo1.maven.org/maven2/org/apache/ws/commons/axiom/axiom-api/1.2.8/axiom-api-1.2.8.jar" 
+      dest="deps/awsapi-lib/axiom-api-1.2.8.jar" usetimestamp="true" />
+   <get src="http://repo1.maven.org/maven2/org/apache/ws/commons/axiom/axiom-impl/1.2.8/axiom-impl-1.2.8.jar"
+      dest="deps/awsapi-lib/axiom-impl-1.2.8.jar" usetimestamp="true" />  
+
   </target>
 
   <target name="resolveOptBuildDeps">
