@@ -779,6 +779,9 @@
         $('<div>').addClass('button add-vm custom-action')
           .html(_l(field.custom.buttonLabel))
           .click(function() {
+            if (field.custom.requireValidation &&
+                !$multiForm.valid()) return false;
+            
             var formData = getMultiData($multi);
             
             field.custom.action({
@@ -791,6 +794,8 @@
                 }
               }
             });
+
+            return false;
           }).appendTo($td);
       } else if (field.addButton) {
         $addVM = $('<div>').addClass('button add-vm').html(
