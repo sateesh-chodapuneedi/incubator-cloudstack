@@ -53,6 +53,8 @@
       dest="deps/commons-lang-2.6.jar" usetimestamp="true" />
     <get src="http://repo1.maven.org/maven2/org/apache/tomcat/servlet-api/6.0.35/servlet-api-6.0.35.jar" 
       dest="deps/servlet-api-6.0.35.jar" usetimestamp="true" />
+    <get src="http://repo1.maven.org/maven2/org/seleniumhq/selenium/server/selenium-server/1.0.3/selenium-server-1.0.3-standalone.jar"
+      dest="deps/selenium-1.0.3-standalone-1.0.3.jar" usetimestamp="true" />
 <!--############# AWS STUFF BELOW THIS LINE ####################-->
    <get src="http://repo1.maven.org/maven2/org/apache/ws/commons/axiom/axiom-api/1.2.8/axiom-api-1.2.8.jar" 
       dest="deps/awsapi-lib/axiom-api-1.2.8.jar" usetimestamp="true" />

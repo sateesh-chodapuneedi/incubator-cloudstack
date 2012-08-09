@@ -149,7 +149,7 @@
   </path>
 
   <path id="compile.deps.classpath">
-      <fileset dir="${tools.jar.dir}" erroronmissingdir="true">
+      <fileset dir="${deps.dir}" erroronmissingdir="true">
           <include name="*.jar" />
       </fileset>
   </path>
