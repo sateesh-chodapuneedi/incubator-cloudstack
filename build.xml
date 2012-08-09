@@ -30,5 +30,5 @@
     <import file="${base.dir}/build/build-devcloud.xml" optional="true"/>
     <import file="${base.dir}/build/build-usage.xml" optional="false"/>
     <import file="${base.dir}/build/build-aws-api.xml" optional="false"/>
-    <import file="${base.dir}/build/dldeps.xml" optional="true"/>
+    <import file="${base.dir}/build/alldeps.xml" optional="true"/>
 </project>
