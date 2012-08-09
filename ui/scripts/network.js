@@ -2360,7 +2360,8 @@
                           });
 
                           args.response.success({
-                            data: loadBalancerData
+                            data: loadBalancerData,
+                            //hideFields: ['autoScale']
                           });
                         }
                       });
