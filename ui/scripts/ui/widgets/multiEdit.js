@@ -180,6 +180,8 @@
             $button.html(data && data[fieldName] && data[fieldName]['_buttonLabel'] ?
                          _l(data[fieldName]['_buttonLabel']) : _l(field.custom.buttonLabel));
             $button.click(function() {
+              if ($td.hasClass('disabled')) return false;
+              
               var $button = $(this);
               var context = $.extend(true, {},
                                      options.context ?
@@ -200,6 +202,8 @@
                   }
                 }
               });
+
+              return true;
             });
             $button.appendTo($td);
           }
@@ -213,6 +217,11 @@
         // Align width to main header
         var targetWidth = $multi.find('th.' + fieldName).width() + 5;
         $td.width(targetWidth);
+
+        if (data._hideFields &&
+            $.inArray(fieldName, data._hideFields) > -1) {
+          $td.addClass('disabled');
+        }
 
         return true;
       });
