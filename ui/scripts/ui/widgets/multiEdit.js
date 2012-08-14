@@ -812,7 +812,7 @@
           }).appendTo($td);
       } else if (field.addButton) {
         $addVM = $('<div>').addClass('button add-vm').html(
-          _l('label.add.vms')
+          _l('label.add')
         ).appendTo($td);
       }
     });
