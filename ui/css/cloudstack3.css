@@ -9612,6 +9612,13 @@ div.panel.ui-dialog div.list-view div.fixed-header {
   max-height: 600px;
 }
 
+div.container div.panel div#details-tab-network.detail-group div div.multi-edit table.multi-edit tbody tr td,
+ div.container div.panel div#details-tab-network.detail-group div div.multi-edit table.multi-edit thead tr th
+  {
+ min-width:72px;
+ font-size:10px;
+}
+
 .ui-dialog div.autoscaler .detail-actions {
 }
 
