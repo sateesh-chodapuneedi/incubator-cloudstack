@@ -848,6 +848,7 @@
                         'autoScale': {
                           label: 'AutoScale',
                           custom: {
+                            requireValidation: true,
                             buttonLabel: 'label.configure',
                             action: cloudStack.uiCustom.autoscaler(cloudStack.autoscaler)
                           }
