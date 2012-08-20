@@ -19,4 +19,6 @@ include 'plugins:user-authenticators:plain-text'
 include 'plugins:user-authenticators:md5'
 
 // Test stuff
-// include 'tests','agent-simulator'
+include 'test'
+// include 'agent-simulator'
+
