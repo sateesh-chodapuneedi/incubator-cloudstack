@@ -863,8 +863,9 @@
                           label: 'label.add.vms',
                           addButton: true
                         }
-                      },
-                      add: {
+                      },											
+											
+                      add: {  //basic zone - elastic IP - Add Load Balancer tab - Add VMs button
                         label: 'label.add.vms',
                         action: function(args) {
                           var openFirewall = false;
