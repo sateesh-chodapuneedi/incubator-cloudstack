@@ -108,32 +108,78 @@
       </resource>
     </resources>
     <plugins>
-<plugin>
-  <groupId>org.apache.maven.plugins</groupId>
-  <artifactId>maven-dependency-plugin</artifactId>
-  <executions>
-    <execution>
-      <id>unpack-my-lib</id>
-      <phase>process-resources</phase>
-      <goals>
-        <goal>unpack</goal>
-      </goals>
-      <configuration>
-        <artifactItems>
-          <artifactItem>
-            <groupId>org.apache.axis2</groupId>
-            <artifactId>axis2-webapp</artifactId>
-            <version>${cs.axis2.version}</version>
-            <type>war</type>
-            <overWrite>false</overWrite>
-          </artifactItem>
-        </artifactItems>
-        <outputDirectory>${project.build.directory}/${project.artifactId}-${project.version}</outputDirectory>
-        <overWriteReleases>false</overWriteReleases>
-      </configuration>
-    </execution>
-  </executions>
-</plugin>
+    <plugin>
+      <groupId>org.apache.maven.plugins</groupId>
+      <artifactId>maven-dependency-plugin</artifactId>
+      <executions>
+        <execution>
+          <id>unpack-axis2-war</id>
+          <phase>process-resources</phase>
+          <goals>
+            <goal>unpack</goal>
+          </goals>
+          <configuration>
+            <artifactItems>
+              <artifactItem>
+                <groupId>org.apache.axis2</groupId>
+                <artifactId>axis2-webapp</artifactId>
+                <version>${cs.axis2.version}</version>
+                <type>war</type>
+                <overWrite>false</overWrite>
+              </artifactItem>
+            </artifactItems>
+            <outputDirectory>${project.build.directory}/${project.artifactId}-${project.version}</outputDirectory>
+            <overWriteReleases>false</overWriteReleases>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+    <plugin>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>1.7</version>
+        <executions>
+          <execution>
+            <phase>compile</phase>
+            <configuration>
+              <target>
+                <jar jarfile="${project.build.directory}/${project.artifactId}-${project.version}/WEB-INF/services/cloud-auth-s3.mar" basedir="${project.build.directory}/classes/" excludes="**/*">
+                  <fileset dir="${project.build.directory}/classes/">
+                    <include name="**/auth/s3/*.class" />
+                  </fileset>
+                  <metainf dir="src/com/cloud/bridge/auth/s3">
+                    <include name="module.xml" />
+                  </metainf>
+                </jar>
+                <jar jarfile="${project.build.directory}/${project.artifactId}-${project.version}/WEB-INF/services/cloud-s3.aar" basedir="${project.build.directory}/classes/" excludes="**/*">
+                  <!--                            
+                    <metainf dir="${base.dir}/resource/AmazonS3">
+                        <include name="services.xml" />
+                        <include name="AmazonS3.wsdl" />
+                    </metainf>
+                  -->
+                </jar>
+                <jar jarfile="${project.build.directory}/${project.artifactId}-${project.version}/WEB-INF/services/cloud-ec2.aar" basedir="${project.build.directory}/classes/" excludes="**/*">
+                  <metainf dir="resource/AmazonEC2">
+                    <include name="services.xml" />
+                    <include name="AmazonEC2.wsdl" />
+                  </metainf>
+                </jar>
+                <jar jarfile="${project.build.directory}/${project.artifactId}-${project.version}/WEB-INF/services/cloud-auth-ec2.mar" basedir="${project.build.directory}/classes/" excludes="**/*">
+                  <fileset dir="${project.build.directory}/classes/">
+                    <include name="**/auth/ec2/*.class" />
+                  </fileset>
+                  <metainf dir="src/com/cloud/bridge/auth/ec2">
+                    <include name="module.xml" />
+                  </metainf>
+                </jar>
+              </target>
+            </configuration>
+            <goals>
+              <goal>run</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-war-plugin</artifactId>
