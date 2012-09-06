@@ -133,13 +133,12 @@ def build_jars ():
 							 mvnargs = mvn_args)
 
 	jarnode = bld.srcnode.find_dir ('.')
-	jars_str = jarnode.ant_glob ('**/target/*.jar').split ()
+	jars_str = jarnode.ant_glob ('client/target/cloud-client-ui-4.0.0-SNAPSHOT/WEB-INF/lib/*.jar').split ()
 	ant_jars = []
 	excludes = [ "cloud-*tests.jar" ]
 
 	for a in jars_str:
-		if _basename (a).startswith ("cloud-") \
-			and not _basename (a) in excludes:
+		if not _basename (a) in excludes:
 			a = jarnode.abspath () + os.sep + a
 			ant_jars.append (a)
 	
