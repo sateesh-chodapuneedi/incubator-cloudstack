@@ -32,6 +32,7 @@
       <groupId>com.cloud.com.f5</groupId>
       <artifactId>icontrol</artifactId>
       <version>1.0</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.axis</groupId>

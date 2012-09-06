@@ -32,11 +32,13 @@
       <groupId>com.cloud.com.citrix</groupId>
       <artifactId>netscaler</artifactId>
       <version>1.0</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>com.cloud.com.citrix</groupId>
       <artifactId>netscaler-sdx</artifactId>
       <version>1.0</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 </project>
