@@ -580,7 +580,7 @@ fi
 %{_javadir}/log4j-1.2.16.jar
 %{_javadir}/trilead-ssh2-build213-svnkit-1.3-patch.jar
 %{_javadir}/cglib-2.2.jar
-%{_javadir}/xapi-5.6.100-1-SNAPSHOT.jar
+%{_javadir}/xapi-5.6.100-1-*.jar
 %{_javadir}/xmlrpc-common-3.*.jar
 %{_javadir}/xmlrpc-client-3.*.jar
 %{_javadir}/jstl-1.2.jar
