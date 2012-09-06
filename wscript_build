@@ -135,13 +135,7 @@ def build_jars ():
 	jarnode = bld.srcnode.find_dir ('.')
 	jars_str = jarnode.ant_glob ('**/target/*.jar').split ()
 	ant_jars = []
-	excludes = ["cloud-xstream-1.3.1.jar", "cloud-commons-dbcp-1.2.2.jar", 
-			"cloud-commons-httpclient-3.1.jar", "cloud-commons-pool-1.4.jar",
-			"cloud-servlet-api.jar", "cloud-commons-logging-1.1.1.jar",
-			"cloud-ws-commons-util-1.0.2.jar",
-			"cloud-commons-collections-3.2.1.jar", "vmware*.jar", "cloud-secstorage-extras.jar",
-			"cloud-agent-simulator.jar", "cloud-awsapi.jar", "cloud-test.jar", "cloud-wsdl4j.jar", "cloud-console-proxy.jar",
-                        "cloud-*tests.jar" ]
+	excludes = [ "cloud-*tests.jar" ]
 
 	for a in jars_str:
 		if _basename (a).startswith ("cloud-") \
@@ -150,6 +144,7 @@ def build_jars ():
 			ant_jars.append (a)
 	
 	bld.install_files ('${JAVADIR}', ant_jars)
+	bld.install_files ('${MSENVIRON}/webapps/client/WEB-INF/lib', ant_jars)
 
 def build_premium ():
 	if buildpremium: bld.recurse(["cloudstack-proprietary/"],'build')

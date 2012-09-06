@@ -341,7 +341,6 @@ rm -f $RPM_BUILD_ROOT/usr/share/java/annogen-0.1.0.jar
 rm -f $RPM_BUILD_ROOT/usr/share/java/ant-1.7.0.jar
 rm -f $RPM_BUILD_ROOT/usr/share/java/ant-launcher-1.7.0.jar
 rm -f $RPM_BUILD_ROOT/usr/share/java/antlr-2.7.6.jar
-rm -f $RPM_BUILD_ROOT/usr/share/java/asm-3.1.jar
 rm -f $RPM_BUILD_ROOT/usr/share/java/axiom-api-1.2.8.jar
 rm -f $RPM_BUILD_ROOT/usr/share/java/axiom-dom-1.2.7.jar
 rm -f $RPM_BUILD_ROOT/usr/share/java/axiom-impl-1.2.7.jar
@@ -598,6 +597,7 @@ fi
 %{_javadir}/commons-lang-2.6.jar
 %{_javadir}/ejb-api-3.0.jar
 %{_javadir}/hibernate-jpa-2.0-api-1.0.0.Final.jar
+%{_javadir}/asm-3.1.jar
 #%{_javadir}/%{name}-netscaler.jar
 #%{_javadir}/%{name}-netscaler-sdx.jar
 #%{_javadir}/%{name}-iControl.jar
