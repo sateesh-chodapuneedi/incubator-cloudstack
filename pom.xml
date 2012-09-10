@@ -158,6 +158,7 @@
     <module>plugins</module>
     <module>awsapi</module>
     <module>patches</module>
+    <module>client</module>
   </modules>
 
   <dependencies>
@@ -215,12 +216,6 @@
 
   <profiles>
     <profile>
-      <id>client</id>
-      <modules>
-        <module>client</module>
-      </modules>
-    </profile>
-    <profile>
       <id>deps</id>
       <modules>
         <module>deps</module>
@@ -230,6 +225,17 @@
       <id>dist</id>
       <modules>
         <module>distribution</module>
+      </modules>
+    </profile>
+    <profile>
+      <id>vmware</id>
+      <activation>
+        <property>
+          <name>nonoss</name>
+        </property>
+      </activation>
+      <modules>
+        <module>vmware-base</module>
       </modules>
     </profile>
   </profiles>
