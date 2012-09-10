@@ -207,8 +207,8 @@
         </configuration>
       </plugin>
     </plugins>
-    <testSourceDirectory>test</testSourceDirectory>
-    <!--
+    <!-- 
+      <testSourceDirectory>test</testSourceDirectory> 
         <plugins>
          <plugin>
            <groupId>org.apache.maven.plugins</groupId>
