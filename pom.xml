@@ -80,6 +80,10 @@
     <cs.servlet.version>2.4</cs.servlet.version>
     <cs.jstl.version>1.2</cs.jstl.version>
 
+    <!-- Most test require a working and configured database,
+         so keep this disabled to most users can compilei.
+         Database configuration is utils/conf/db.properties
+     -->
     <skipTests>true</skipTests>
 
   </properties>
