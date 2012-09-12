@@ -75,6 +75,7 @@ import com.cloud.network.NetworkManager;
 import com.cloud.network.NetworkVO;
 import com.cloud.network.RemoteAccessVpnVO;
 import com.cloud.network.VpnUserVO;
+import com.cloud.network.as.AutoScaleManager;
 import com.cloud.network.dao.IPAddressDao;
 import com.cloud.network.dao.NetworkDao;
 import com.cloud.network.dao.RemoteAccessVpnDao;
@@ -203,6 +204,8 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
     private ProjectAccountDao _projectAccountDao;
     @Inject
     private IPAddressDao _ipAddressDao;
+    private AutoScaleManager _autoscaleMgr;
+    @Inject
 
     private Adapters<UserAuthenticator> _userAuthenticators;
 
@@ -583,9 +586,17 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
             for (IpAddress ip : ipsToRelease) {
                 s_logger.debug("Releasing ip " + ip + " as a part of account id=" + accountId + " cleanup");
                 if (!_networkMgr.releasePublicIpAddress(ip.getId(), callerUserId, caller)) {
-                    s_logger.warn("Failed to release ip address " + ip + " as a part of account id=" + accountId + " clenaup");
+                    s_logger.warn("Failed to release ip address " + ip + " as a part of account id=" + accountId + " cleanup");
                     accountCleanupNeeded = true;
                 }
+            }
+
+            // Delete autoscale resources if any
+            try {
+                _autoscaleMgr.cleanUpAutoScaleResources(accountId);
+            } catch (CloudRuntimeException ex) {
+                s_logger.warn("Failed to cleanup AutoScale resources as a part of account id=" + accountId + " cleanup due to exception:", ex);
+                accountCleanupNeeded = true;
             }
 
             // delete account specific Virtual vlans (belong to system Public Network) - only when networks are cleaned
