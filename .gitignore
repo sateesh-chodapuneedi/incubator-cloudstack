@@ -36,7 +36,6 @@ cloud-*.tar.bz2
 build.number
 api.log.*.gz
 cloud.log.*.*
-unittest
 deps/cloud.userlibraries
 deps/awsapi-lib/
 .DS_Store
