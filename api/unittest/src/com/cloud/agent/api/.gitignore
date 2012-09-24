@@ -1,0 +1,15 @@
+*.class
+*.jar
+*.pom
+*.properties
+*.repositories
+*.sha1
+*.xml
+META-INF/
+baremetal/
+check/
+com/
+proxy/
+routing/
+storage/
+to/
