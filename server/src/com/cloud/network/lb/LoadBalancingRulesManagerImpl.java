@@ -238,7 +238,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
         }
         return null;
     }
-    private LbAutoScaleVmGroup getLbAutoScaleVmGroup(AutoScaleVmGroup vmGroup) {
+    private LbAutoScaleVmGroup getLbAutoScaleVmGroup(AutoScaleVmGroup vmGroup, String currentState) {
         List<AutoScaleVmGroupPolicyMapVO> vmGroupPolicyMapList = _autoScaleVmGroupPolicyMapDao.listByVmGroupId(vmGroup.getId());
         List<LbAutoScalePolicy> autoScalePolicies = new ArrayList<LbAutoScalePolicy>();
         for (AutoScaleVmGroupPolicyMapVO vmGroupPolicyMap : vmGroupPolicyMapList) {
@@ -259,23 +259,28 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
         String secretKey = user.getSecretKey();
         String csUrl = _configDao.getValue(Config.EndpointeUrl.key());
 
-        if(apiKey == null) {
+        if (apiKey == null) {
             throw new InvalidParameterValueException("apiKey for user: " + user.getUsername() + " is empty. Please generate it");
         }
 
-        if(secretKey == null) {
+        if (secretKey == null) {
             throw new InvalidParameterValueException("secretKey for user: " + user.getUsername() + " is empty. Please generate it");
         }
 
-        if(csUrl == null || csUrl.contains("localhost")) {
+        if (csUrl == null || csUrl.contains("localhost")) {
             throw new InvalidParameterValueException("Global setting endpointe.url has to be set to the Management Server's API end point");
         }
 
         LbAutoScaleVmProfile lbAutoScaleVmProfile = new LbAutoScaleVmProfile(autoScaleVmProfile, apiKey, secretKey, csUrl);
-        return new LbAutoScaleVmGroup(vmGroup, autoScalePolicies, lbAutoScaleVmProfile);
+        return new LbAutoScaleVmGroup(vmGroup, autoScalePolicies, lbAutoScaleVmProfile, currentState);
     }
 
-    private boolean applyAutoScaleConfig(LoadBalancerVO lb, LoadBalancingRule rule) throws ResourceUnavailableException {
+    private boolean applyAutoScaleConfig(LoadBalancerVO lb, AutoScaleVmGroupVO vmGroup, String currentState) throws ResourceUnavailableException {
+        LbAutoScaleVmGroup lbAutoScaleVmGroup = getLbAutoScaleVmGroup(vmGroup, currentState);
+        /* Regular config like destinations need not be packed for applying autoscale config as of today.*/
+        LoadBalancingRule rule = new LoadBalancingRule(lb, null, null);
+        rule.setAutoScaleVmGroup(lbAutoScaleVmGroup);
+
         if (!isRollBackAllowedForProvider(lb)) {
             // this is for Netscalar type of devices. if their is failure the db entries will be rollbacked.
             return false;
@@ -293,7 +298,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
 
     @Override
     @DB
-    public boolean configureLbAutoScaleVmGroup(long vmGroupid) {
+    public boolean configureLbAutoScaleVmGroup(long vmGroupid, String currentState) throws ResourceUnavailableException {
         AutoScaleVmGroupVO vmGroup = _autoScaleVmGroupDao.findById(vmGroupid);
         boolean success = false;
 
@@ -313,20 +318,18 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
 
         // LBTODO
         try {
-            LbAutoScaleVmGroup lbAutoScaleVmGroup = getLbAutoScaleVmGroup(vmGroup);
-            LoadBalancingRule rule = new LoadBalancingRule(loadBalancer, null, null);
-            rule.setAutoScaleVmGroup(lbAutoScaleVmGroup);
-            success = applyAutoScaleConfig(loadBalancer, rule);
+            success = applyAutoScaleConfig(loadBalancer, vmGroup, currentState);
         } catch (ResourceUnavailableException e) {
             s_logger.warn("Unable to configure AutoScaleVmGroup to the lb rule: " + loadBalancer.getId() + " because resource is unavaliable:", e);
+            if (isRollBackAllowedForProvider(loadBalancer)) {
+                loadBalancer.setState(backupState);
+                _lbDao.persist(loadBalancer);
+                s_logger.debug("LB Rollback rule id: " + loadBalancer.getId() + " lb state rolback while creating AutoscaleVmGroup");
+            }
+            throw e;
         } finally {
             if (!success) {
                 s_logger.warn("Failed to configure LB Auto Scale Vm Group with Id:" + vmGroupid);
-                if (isRollBackAllowedForProvider(loadBalancer)) {
-                    loadBalancer.setState(backupState);
-                    _lbDao.persist(loadBalancer);
-                    s_logger.debug("LB Rollback rule id: " + loadBalancer.getId() + " lb state rolback while creating AutoscaleVmGroup");
-                }
             }
         }
 
@@ -464,7 +467,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
 
         LoadBalancerVO loadBalancer = _lbDao.findById(cmd.getLbRuleId());
         if (loadBalancer == null) {
-            throw new InvalidParameterException("Invalid Load balancer Id:"  + cmd.getLbRuleId());
+            throw new InvalidParameterException("Invalid Load balancer Id:" + cmd.getLbRuleId());
         }
         FirewallRule.State backupState = loadBalancer.getState();
         loadBalancer.setState(FirewallRule.State.Add);
@@ -476,7 +479,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
             if (isRollBackAllowedForProvider(loadBalancer)) {
                 loadBalancer.setState(backupState);
                 _lbDao.persist(loadBalancer);
-                s_logger.debug("LB Rollback rule id: " + loadBalancer.getId() + " lb state rolback while creating sticky policy" );
+                s_logger.debug("LB Rollback rule id: " + loadBalancer.getId() + " lb state rolback while creating sticky policy");
             }
             deleteLBStickinessPolicy(cmd.getEntityId(), false);
             success = false;
@@ -532,7 +535,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
                 s_logger.warn("Unable to apply the load balancer config because resource is unavaliable.", e);
                 success = false;
             }
-        }else{
+        } else {
             _lb2stickinesspoliciesDao.remove(stickinessPolicy.getLoadBalancerId());
         }
 
@@ -642,7 +645,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
             s_logger.warn("Unable to apply the load balancer config because resource is unavaliable.", e);
         }
 
-        if(!success){
+        if (!success) {
             CloudRuntimeException ex = new CloudRuntimeException("Failed to add specified loadbalancerruleid for vms " + instanceIds);
             ex.addProxyObject(loadBalancer, loadBalancerId, "loadBalancerId");
             // TBD: Also pack in the instanceIds in the exception using the right VO object or table name.
@@ -710,7 +713,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
             }
             s_logger.warn("Unable to apply the load balancer config because resource is unavaliable.", e);
         }
-        if(!success){
+        if (!success) {
             CloudRuntimeException ex = new CloudRuntimeException("Failed to remove specified load balancer rule id for vms " + instanceIds);
             ex.addProxyObject(loadBalancer, loadBalancerId, "loadBalancerId");
             throw ex;
@@ -893,7 +896,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
             }
 
             _networkMgr.checkIpForService(ipAddressVo, Service.Lb);
-        }
+                    }
 
         // FIXME: breaking the dependency on ELB manager. This breaks functionality of ELB using virtual router
         // Bug CS-15411 opened to document this
@@ -906,7 +909,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
             if (off.getElasticLb() && ipAddressVo == null) {
                 ip = _networkMgr.assignSystemIp(lb.getNetworkId(), lbOwner, true, false);
                 lb.setSourceIpAddressId(ip.getId());
-            }
+                }
             try {
                 result = createLoadBalancer(lb, openFirewall);
             } catch (Exception ex) {
@@ -1265,7 +1268,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
                     if (lbBackup.getDescription() != null) {
                         lb.setDescription(lbBackup.getDescription());
                     }
-                    if (lbBackup.getAlgorithm() != null){
+                    if (lbBackup.getAlgorithm() != null) {
                         lb.setAlgorithm(lbBackup.getAlgorithm());
                     }
                     lb.setState(lbBackup.getState());
@@ -1417,7 +1420,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
 
         if (tags != null && !tags.isEmpty()) {
             SearchBuilder<ResourceTagVO> tagSearch = _resourceTagDao.createSearchBuilder();
-            for (int count=0; count < tags.size(); count++) {
+            for (int count = 0; count < tags.size(); count++) {
                 tagSearch.or().op("key" + String.valueOf(count), tagSearch.entity().getKey(), SearchCriteria.Op.EQ);
                 tagSearch.and("value" + String.valueOf(count), tagSearch.entity().getValue(), SearchCriteria.Op.EQ);
                 tagSearch.cp();
