@@ -21,7 +21,7 @@
 # DISABLE the post-percentinstall java repacking and line number stripping
 # we need to find a way to just disable the java repacking and line number stripping, but not the autodeps
 
-Name:      cloudstack
+Name:      cloud
 Summary:   CloudStack IaaS Platform
 #http://fedoraproject.org/wiki/PackageNamingGuidelines#Pre-Release_packages
 %if "%{?_prerelease}" != ""
@@ -62,6 +62,12 @@ Group:     System Environment/Libraries
 The CloudStack management server is the central point of coordination,
 management, and intelligence in CloudStack.  
 
+%package setup
+Summary: CloudStack database setup scripts
+Requires: %{name}-management-server = %{_ver}
+Group: System Environment/Libraries
+%description setup
+The scripts and commands used to setup and configure the database
 
 %prep
 echo Doing CloudStack build
@@ -80,11 +86,15 @@ mvn package
 
 %install
 [ ${RPM_BUILD_ROOT} != "/" ] && rm -rf ${RPM_BUILD_ROOT}
-mkdir -p ${RPM_BUILD_ROOT}/usr/bin
+mkdir -p ${RPM_BUILD_ROOT}%{_bindir}
+mkdir -p ${RPM_BUILD_ROOT}%{_datadir}/%{name}/setup
 mkdir -p ${RPM_BUILD_ROOT}/usr/share/%{name}/management/
-for dir in bin conf lib logs temp webapps work ; do
-  mkdir -p ${RPM_BUILD_ROOT}/usr/share/%{name}/management/${dir}
-done
+ln -sf /usr/share/tomcat6/bin ${RPM_BUILD_ROOT}/usr/share/%{name}/management/bin
+ln -sf /etc/cloud/management ${RPM_BUILD_ROOT}/usr/share/%{name}/management/conf
+ln -sf /usr/share/tomcat6/lib ${RPM_BUILD_ROOT}/usr/share/%{name}/management/lib
+ln -sf /var/log/cloud/management ${RPM_BUILD_ROOT}/usr/share/%{name}/management/logs
+ln -sf /var/cache/cloud/management/temp ${RPM_BUILD_ROOT}/usr/share/%{name}/management/temp
+ln -sf /var/cache/cloud/management/work ${RPM_BUILD_ROOT}/usr/share/%{name}/management/work
 mkdir -p ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client
 mkdir -p ${RPM_BUILD_ROOT}/var/log/%{name}/management
 mkdir -p ${RPM_BUILD_ROOT}/var/log/%{name}/agent
@@ -98,22 +108,19 @@ mkdir -p ${RPM_BUILD_ROOT}/etc/rc.d/init.d
 mkdir -p ${RPM_BUILD_ROOT}/etc/sysconfig
 mkdir -p ${RPM_BUILD_ROOT}/etc/%{name}/management/Catalina/localhost/client
 
-cp client/bindir/cloud-setup-management.in ${RPM_BUILD_ROOT}/usr/bin/%{name}-setup-management
-cp client/bindir/cloud-update-xenserver-licenses.in ${RPM_BUILD_ROOT}/usr/bin/%{name}-update-xenserver-licenses
+cp client/target/utilities/bin/* ${RPM_BUILD_ROOT}%{_bindir}
+cp -r client/target/utilities/scripts/db/* ${RPM_BUILD_ROOT}%{_datadir}/%{name}/setup
 cp packaging/centos63/cloud-management.rc ${RPM_BUILD_ROOT}/etc/rc.d/init.d/%{name}-management
 cp packaging/centos63/cloud-management.sysconfig ${RPM_BUILD_ROOT}/etc/sysconfig/%{name}-management
 
 cp -r client/target/cloud-client-ui-4.1.0-SNAPSHOT/* ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client
 
-cp ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/db.properties \
-    ${RPM_BUILD_ROOT}/etc/%{name}/management/db.properties
-cp ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/log4j-cloud.xml \
-    ${RPM_BUILD_ROOT}/etc/%{name}/management/log4j-%{name}.xml
-cp ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/tomcat6-nonssl.conf \
-    ${RPM_BUILD_ROOT}/etc/%{name}/management/tomcat6-nonssl.conf
-cp ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/tomcat6-ssl.conf \
-    ${RPM_BUILD_ROOT}/etc/%{name}/management/tomcat6-ssl.conf
-cp ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/context.xml \
+for name in db.properties log4j-cloud.xml tomcat6-nonssl.conf tomcat6-ssl.conf server-ssl.xml server-nonssl.xml \
+            catalina.policy catalina.properties db-enc.properties classpath.conf tomcat-users.xml ; do
+  mv ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/$name \
+    ${RPM_BUILD_ROOT}/etc/%{name}/management/$name
+done
+mv ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/context.xml \
     ${RPM_BUILD_ROOT}/etc/%{name}/management/Catalina/localhost/client
 
 
@@ -143,7 +150,7 @@ rm -rf %{_localstatedir}/cache/%{name}
 
 %post management-server
 if [ "$1" == "1" ] ; then
-    /usr/bin/cloudstack-setup-management
+    /usr/bin/cloud-setup-management
     /sbin/chkconfig --add %{name}-management > /dev/null 2>&1 || true
     /sbin/chkconfig --level 345 %{name}-management on > /dev/null 2>&1 || true
 fi
@@ -173,6 +180,21 @@ fi
 %attr(0755,root,root) %{_bindir}/%{name}-setup-management
 %attr(0755,root,root) %{_bindir}/%{name}-update-xenserver-licenses
 %{_datadir}/%{name}/management/*
+
+%files setup
+%attr(0755,root,root) %{_bindir}/%{name}-setup-databases
+%attr(0755,root,root) %{_bindir}/%{name}-migrate-databases
+%attr(0755,root,root) %{_bindir}/%{name}-set-guest-password
+%attr(0755,root,root) %{_bindir}/%{name}-set-guest-sshkey
+%attr(0755,root,root) %{_bindir}/%{name}-sysvmadm
+%attr(0755,root,root) %{_bindir}/%{name}-setup-encryption
+%dir %{_datadir}/%{name}/setup
+%{_datadir}/%{name}/setup/*.sql
+%{_datadir}/%{name}/setup/db/*.sql
+%{_datadir}/%{name}/setup/*.sh
+%{_datadir}/%{name}/setup/server-setup.xml
+%doc LICENSE
+%doc NOTICE
 
 
 %changelog
