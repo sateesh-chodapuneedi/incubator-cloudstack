@@ -229,4 +229,10 @@ public class MockProjectManagerImpl implements ProjectManager, Manager {
         return null;
     }
 
+	@Override
+	public Project findByProjectAccountIdIncludingRemoved(long projectAccountId) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 }
