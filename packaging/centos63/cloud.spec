@@ -78,6 +78,7 @@ Requires: mkisofs
 Requires: MySQL-python
 Requires: python-paramiko
 Requires: ipmitool
+Requires: %{name}-setup = %{_ver}
 Group:     System Environment/Libraries
 %description management-server
 The CloudStack management server is the central point of coordination,
@@ -85,10 +86,10 @@ management, and intelligence in CloudStack.
 
 %package setup
 Summary: CloudStack database setup scripts
-Requires: %{name}-management-server = %{_ver}
 Requires: java >= 1.6.0
 Requires: python
 Requires: MySQL-python
+Requires: %{name}-python = %{_ver}
 Group: System Environment/Libraries
 %description setup
 The scripts and commands used to setup and configure the database
@@ -165,6 +166,8 @@ cp -r cloud-cli/cloudtool ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/
 install python/lib/cloud_utils.py ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/cloud_utils.py
 install cloud-cli/cloudapis/cloud.py ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/cloudapis.py
 install python/bindir/cloud-external-ipallocator.py ${RPM_BUILD_ROOT}%{_bindir}/
+install -D client/target/pythonlibs/jasypt-1.9.0.jar ${RPM_BUILD_ROOT}%{_javadir}/jasypt-1.9.0.jar
+install -D client/target/pythonlibs/jasypt-1.8.jar ${RPM_BUILD_ROOT}%{_javadir}/jasypt-1.8.jar
 
 install -D packaging/centos63/cloud-ipallocator.rc ${RPM_BUILD_ROOT}/etc/rc.d/init.d/%{name}-ipallocator
 install -D packaging/centos63/cloud-management.rc ${RPM_BUILD_ROOT}/etc/rc.d/init.d/%{name}-management
@@ -250,6 +253,8 @@ fi
 %{_datadir}/%{name}/setup/db/*.sql
 %{_datadir}/%{name}/setup/*.sh
 %{_datadir}/%{name}/setup/server-setup.xml
+%{_javadir}/jasypt-1.9.0.jar
+%{_javadir}/jasypt-1.8.jar
 %doc LICENSE
 %doc NOTICE
 

@@ -210,6 +210,39 @@
           </execution>
         </executions>
       </plugin>
+      <!-- there are the jasypt libs requires by some of the python scripts -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>2.5.1</version>
+        <executions>
+          <execution>
+            <id>copy</id>
+            <phase>package</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>org.jasypt</groupId>
+                  <artifactId>jasypt</artifactId>
+                  <version>1.9.0</version>`
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/pythonlibs</outputDirectory>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>org.jasypt</groupId>
+                  <artifactId>jasypt</artifactId>
+                  <version>1.8</version>`
+                  <overWrite>false</overWrite>
+                  <outputDirectory>${project.build.directory}/pythonlibs</outputDirectory>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
     <pluginManagement>
       <plugins>
