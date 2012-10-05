@@ -57,6 +57,27 @@ intelligent IaaS cloud implementation.
 %package management-server
 Summary:   CloudStack management server UI
 Requires: tomcat6
+Requires: java >= 1.6.0
+Requires: python
+Requires: bash
+Requires: bzip2
+Requires: gzip
+Requires: unzip
+Requires: /sbin/mount.nfs
+Requires: openssh-clients
+Requires: nfs-utils
+Requires: wget
+Requires: mysql-connector-java
+Requires: ws-commons-util
+Requires: jpackage-utils
+Requires: sudo
+Requires: /sbin/service
+Requires: /sbin/chkconfig
+Requires: /usr/bin/ssh-keygen
+Requires: mkisofs
+Requires: MySQL-python
+Requires: python-paramiko
+Requires: ipmitool
 Group:     System Environment/Libraries
 %description management-server
 The CloudStack management server is the central point of coordination,
@@ -65,9 +86,22 @@ management, and intelligence in CloudStack.
 %package setup
 Summary: CloudStack database setup scripts
 Requires: %{name}-management-server = %{_ver}
+Requires: java >= 1.6.0
+Requires: python
+Requires: MySQL-python
 Group: System Environment/Libraries
 %description setup
 The scripts and commands used to setup and configure the database
+
+%package python
+Summary:   CloudStack Python library
+# FIXME nuke the archdependency
+Requires: python
+Group:     System Environment/Libraries
+%description python
+The CloudStack Python library contains a few Python modules that the
+CloudStack uses.
+
 
 %prep
 echo Doing CloudStack build
@@ -82,7 +116,7 @@ echo Doing CloudStack build
 cp packaging/centos63/replace.properties build/replace.properties
 echo VERSION=%{_maventag} >> build/replace.properties
 echo PACKAGE=%{name} >> build/replace.properties
-mvn package
+mvn package -Dsystemvm
 
 %install
 [ ${RPM_BUILD_ROOT} != "/" ] && rm -rf ${RPM_BUILD_ROOT}
@@ -98,6 +132,8 @@ ln -sf /var/cache/cloud/management/work ${RPM_BUILD_ROOT}/usr/share/%{name}/mana
 mkdir -p ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client
 mkdir -p ${RPM_BUILD_ROOT}/var/log/%{name}/management
 mkdir -p ${RPM_BUILD_ROOT}/var/log/%{name}/agent
+mkdir -p ${RPM_BUILD_ROOT}/var/log/%{name}/awsapi
+mkdir -p ${RPM_BUILD_ROOT}/var/log/%{name}/ipallocator
 mkdir -p ${RPM_BUILD_ROOT}/var/cache/%{name}/management/work
 mkdir -p ${RPM_BUILD_ROOT}/var/cache/%{name}/management/temp
 mkdir -p ${RPM_BUILD_ROOT}/var/lib/%{name}/mnt
@@ -108,21 +144,31 @@ mkdir -p ${RPM_BUILD_ROOT}/etc/rc.d/init.d
 mkdir -p ${RPM_BUILD_ROOT}/etc/sysconfig
 mkdir -p ${RPM_BUILD_ROOT}/etc/%{name}/management/Catalina/localhost/client
 
-cp client/target/utilities/bin/* ${RPM_BUILD_ROOT}%{_bindir}
-cp -r client/target/utilities/scripts/db/* ${RPM_BUILD_ROOT}%{_datadir}/%{name}/setup
-cp packaging/centos63/cloud-management.rc ${RPM_BUILD_ROOT}/etc/rc.d/init.d/%{name}-management
-cp packaging/centos63/cloud-management.sysconfig ${RPM_BUILD_ROOT}/etc/sysconfig/%{name}-management
+install -D client/target/utilities/bin/* ${RPM_BUILD_ROOT}%{_bindir}
+install -D console-proxy/dist/systemvm.iso ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/vms/systemvm.iso
+install -D console-proxy/dist/systemvm.zip ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/vms/systemvm.zip
 
+cp -r client/target/utilities/scripts/db/* ${RPM_BUILD_ROOT}%{_datadir}/%{name}/setup
 cp -r client/target/cloud-client-ui-4.1.0-SNAPSHOT/* ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client
 
 for name in db.properties log4j-cloud.xml tomcat6-nonssl.conf tomcat6-ssl.conf server-ssl.xml server-nonssl.xml \
-            catalina.policy catalina.properties db-enc.properties classpath.conf tomcat-users.xml ; do
+            catalina.policy catalina.properties db-enc.properties classpath.conf tomcat-users.xml web.xml ; do
   mv ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/$name \
     ${RPM_BUILD_ROOT}/etc/%{name}/management/$name
 done
 mv ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/context.xml \
     ${RPM_BUILD_ROOT}/etc/%{name}/management/Catalina/localhost/client
 
+mkdir -p ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/
+cp -r python/lib/cloudutils ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/
+cp -r cloud-cli/cloudtool ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/
+install python/lib/cloud_utils.py ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/cloud_utils.py
+install cloud-cli/cloudapis/cloud.py ${RPM_BUILD_ROOT}/usr/lib/python2.6/site-packages/cloudapis.py
+install python/bindir/cloud-external-ipallocator.py ${RPM_BUILD_ROOT}%{_bindir}/
+
+install -D packaging/centos63/cloud-ipallocator.rc ${RPM_BUILD_ROOT}/etc/rc.d/init.d/%{name}-ipallocator
+install -D packaging/centos63/cloud-management.rc ${RPM_BUILD_ROOT}/etc/rc.d/init.d/%{name}-management
+install -D packaging/centos63/cloud-management.sysconfig ${RPM_BUILD_ROOT}/etc/sysconfig/%{name}-management
 
 %clean
 
@@ -149,8 +195,19 @@ rm -rf %{_localstatedir}/cache/%{name}
 # user harcoded here, also hardcoded on wscript
 
 %post management-server
+# %dir %attr doesn't work for permissions
+chmod 770 %{_sysconfdir}/%{name}/management/Catalina
+chmod 770 %{_sysconfdir}/%{name}/management/Catalina/localhost
+chmod 770 %{_sysconfdir}/%{name}/management/Catalina/localhost/client
+chmod 770 %{_sharedstatedir}/%{name}/mnt
+chmod 770 %{_sharedstatedir}/%{name}/management
+chmod 770 %{_localstatedir}/cache/%{name}/management/work
+chmod 770 %{_localstatedir}/cache/%{name}/management/temp
+chmod 770 %{_localstatedir}/log/%{name}/management
+chmod 770 %{_localstatedir}/log/%{name}/agent
+chmod 755 %{_datadir}/%{name}/management/webapps/client/WEB-INF/classes/scripts/vm/systemvm/injectkeys.sh
+
 if [ "$1" == "1" ] ; then
-    /usr/bin/cloud-setup-management
     /sbin/chkconfig --add %{name}-management > /dev/null 2>&1 || true
     /sbin/chkconfig --level 345 %{name}-management on > /dev/null 2>&1 || true
 fi
@@ -193,6 +250,15 @@ fi
 %{_datadir}/%{name}/setup/db/*.sql
 %{_datadir}/%{name}/setup/*.sh
 %{_datadir}/%{name}/setup/server-setup.xml
+%doc LICENSE
+%doc NOTICE
+
+%files python
+%defattr(0644,root,root,0755)
+%{_prefix}/lib*/python*/site-packages/%{name}*
+%attr(0755,root,root) %{_bindir}/cloud-external-ipallocator.py
+%attr(0755,root,root) %{_initrddir}/cloud-ipallocator
+%dir %attr(0770,root,root) %{_localstatedir}/log/%{name}/ipallocator
 %doc LICENSE
 %doc NOTICE
 
