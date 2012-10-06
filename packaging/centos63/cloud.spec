@@ -173,6 +173,16 @@ install -D packaging/centos63/cloud-ipallocator.rc ${RPM_BUILD_ROOT}/etc/rc.d/in
 install -D packaging/centos63/cloud-management.rc ${RPM_BUILD_ROOT}/etc/rc.d/init.d/%{name}-management
 install -D packaging/centos63/cloud-management.sysconfig ${RPM_BUILD_ROOT}/etc/sysconfig/%{name}-management
 
+chmod 770 ${RPM_BUILD_ROOT}%{_sysconfdir}/%{name}/management/Catalina
+chmod 770 ${RPM_BUILD_ROOT}%{_sysconfdir}/%{name}/management/Catalina/localhost
+chmod 770 ${RPM_BUILD_ROOT}%{_sysconfdir}/%{name}/management/Catalina/localhost/client
+chmod 770 ${RPM_BUILD_ROOT}%{_sharedstatedir}/%{name}/mnt
+chmod 770 ${RPM_BUILD_ROOT}%{_sharedstatedir}/%{name}/management
+chmod 770 ${RPM_BUILD_ROOT}%{_localstatedir}/cache/%{name}/management/work
+chmod 770 ${RPM_BUILD_ROOT}%{_localstatedir}/cache/%{name}/management/temp
+chmod 770 ${RPM_BUILD_ROOT}%{_localstatedir}/log/%{name}/management
+chmod 770 ${RPM_BUILD_ROOT}%{_localstatedir}/log/%{name}/agent
+chmod -R ugo+x ${RPM_BUILD_ROOT}/usr/share/%{name}/management/webapps/client/WEB-INF/classes/scripts
 %clean
 
 [ ${RPM_BUILD_ROOT} != "/" ] && rm -rf ${RPM_BUILD_ROOT}
@@ -198,18 +208,6 @@ rm -rf %{_localstatedir}/cache/%{name}
 # user harcoded here, also hardcoded on wscript
 
 %post management-server
-# %dir %attr doesn't work for permissions
-chmod 770 %{_sysconfdir}/%{name}/management/Catalina
-chmod 770 %{_sysconfdir}/%{name}/management/Catalina/localhost
-chmod 770 %{_sysconfdir}/%{name}/management/Catalina/localhost/client
-chmod 770 %{_sharedstatedir}/%{name}/mnt
-chmod 770 %{_sharedstatedir}/%{name}/management
-chmod 770 %{_localstatedir}/cache/%{name}/management/work
-chmod 770 %{_localstatedir}/cache/%{name}/management/temp
-chmod 770 %{_localstatedir}/log/%{name}/management
-chmod 770 %{_localstatedir}/log/%{name}/agent
-chmod 755 %{_datadir}/%{name}/management/webapps/client/WEB-INF/classes/scripts/vm/systemvm/injectkeys.sh
-
 if [ "$1" == "1" ] ; then
     /sbin/chkconfig --add %{name}-management > /dev/null 2>&1 || true
     /sbin/chkconfig --level 345 %{name}-management on > /dev/null 2>&1 || true
@@ -220,8 +218,9 @@ if [ ! -f %{_datadir}/%{name}/management/webapps/client/WEB-INF/classes/scripts/
     echo %{_datadir}/%{name}/management/webapps/client/WEB-INF/classes/scripts/vm/hypervisor/xenserver/
 fi
 
+#No default permission as the permission setup is complex
 %files management-server
-%defattr(0644,root,root,0755)
+%defattr(-,root,root,-)
 %doc LICENSE
 %doc NOTICE
 %dir %attr(0770,root,%{name}) %{_sysconfdir}/%{name}/management/Catalina
