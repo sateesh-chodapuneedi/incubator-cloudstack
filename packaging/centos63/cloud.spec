@@ -217,7 +217,7 @@ fi
 
 if [ ! -f %{_datadir}/%{name}/management/webapps/client/WEB-INF/classes/scripts/scripts/vm/hypervisor/xenserver/vhd-util ] ; then
     echo Please download vhd-util from http://download.cloud.com.s3.amazonaws.com/tools/vhd-util and put it in 
-    echo %{_datadir}/%{name}/management/webapps/client/WEB-INF/classes/scripts/scripts/vm/hypervisor/xenserver/
+    echo %{_datadir}/%{name}/management/webapps/client/WEB-INF/classes/scripts/vm/hypervisor/xenserver/
 fi
 
 %files management-server
