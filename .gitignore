@@ -57,3 +57,4 @@ awsapi/modules/*
 .project
 .settings.xml
 .settings/
+db.properties.override
