@@ -232,7 +232,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
                 serviceResponse.setName(service.getName());
                 if ("Lb".equalsIgnoreCase(service.getName())) {
                     Map<Capability, String> serviceCapabilities = serviceCapabilitiesMap
-                    .get(service);
+                            .get(service);
                     if (serviceCapabilities != null) {
                         for (Capability capability : serviceCapabilities
                                 .keySet()) {
@@ -857,10 +857,10 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
 
         if (apply) {
             try {
-                if (!applyLoadBalancerConfig(loadBalancerId)) {
-                    s_logger.warn("Unable to apply the load balancer config");
-                    return false;
-                }
+                    if (!applyLoadBalancerConfig(loadBalancerId)) {
+                        s_logger.warn("Unable to apply the load balancer config");
+                        return false;
+                    }
             } catch (ResourceUnavailableException e) {
                 if (rollBack && isRollBackAllowedForProvider(lb)) {
                     if (backupMaps != null) {
@@ -929,7 +929,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
             }
 
             _networkMgr.checkIpForService(ipAddressVo, Service.Lb);
-        }
+                    }
 
         // FIXME: breaking the dependency on ELB manager. This breaks functionality of ELB using virtual router
         // Bug CS-15411 opened to document this
@@ -942,7 +942,7 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
             if (off.getElasticLb() && ipAddressVo == null) {
                 ip = _networkMgr.assignSystemIp(lb.getNetworkId(), lbOwner, true, false);
                 lb.setSourceIpAddressId(ip.getId());
-            }
+                }
             try {
                 result = createLoadBalancer(lb, openFirewall);
             } catch (Exception ex) {
@@ -955,8 +955,8 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
                     s_logger.debug("Releasing system IP address " + ip + " as corresponding lb rule failed to create");
                     _networkMgr.handleSystemIpRelease(ip);
                 }
+                }
             }
-        }
 
         if (result == null) {
             throw new CloudRuntimeException("Failed to create load balancer rule: " + lb.getName());
@@ -1373,14 +1373,6 @@ public class LoadBalancingRulesManagerImpl<Type> implements LoadBalancingRulesMa
         return loadBalancerInstances;
     }
 
-    public List<String> getSupportedAutoScaleCounters(long networkid)
-    {
-        String capability = getLBCapability(networkid, Capability.AutoScaleCounters.getName());
-        if (capability == null || capability.length() == 0) {
-            return null;
-        }
-        return Arrays.asList(capability.split(","));
-    }
 
     @Override
     public List<LbStickinessMethod> getStickinessMethods(long networkid)
