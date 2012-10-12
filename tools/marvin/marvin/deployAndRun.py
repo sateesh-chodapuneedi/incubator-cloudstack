@@ -17,50 +17,69 @@
 
 import deployDataCenter
 import TestCaseExecuteEngine
-from optparse import OptionParser
+import ThreadedTestCaseExecuteEngine
+from argparse import ArgumentParser
 import os
 
 if __name__ == "__main__":
 
-    parser = OptionParser() #TODO: deprecate and use the argparse module
+    parser = ArgumentParser()
   
-    parser.add_option("-c", "--config", action="store", default="./datacenterCfg", dest="config", help="the path where the json config file generated, by default is ./datacenterCfg")
-    parser.add_option("-d", "--directory", dest="testCaseFolder", help="the test case directory")
-    parser.add_option("-r", "--result", dest="result", help="test result log file")
-    parser.add_option("-t", "--client", dest="testcaselog", help="test case log file")
-    parser.add_option("-l", "--load", dest="load", action="store_true", help="only load config, do not deploy, it will only run testcase")
-    parser.add_option("-f", "--file", dest="module", help="run tests in the given file")
-    parser.add_option("-x", "--xml", dest="xmlrunner", help="use the xml runner to generate xml reports and path to store xml files")
-    (options, args) = parser.parse_args()
+    parser.add_argument("-c", "--config", action="store", default="./datacenterCfg", dest="config",
+                        help="The path where the json config file generated, by default is ./datacenterCfg")
+    parser.add_argument("-d", "--directory", dest="testCaseFolder",
+                        help="The test case directory")
+    parser.add_argument("-r", "--result", dest="result",
+                        help="Test result log file")
+    parser.add_argument("-t", "--client", dest="testcaselog",
+                        help="Test case log file")
+    parser.add_argument("-l", "--load", dest="load", action="store_true",
+                        help="Only load config, do not deploy, it will only run testcase")
+    parser.add_argument("-f", "--file", dest="module",
+                        help="Run tests in the given file")
+    parser.add_argument("-x", "--xml", dest="xmlrunner",
+                        help="Use the xml runner to generate xml reports and path to store xml files")
+    parser.add_argument("-p", "--pthreads", dest="num_threads",
+                        help="The number of threads used", default=1)
+    
+    results = parser.parse_args()
     
     testResultLogFile = None
-    if options.result is not None:
-        testResultLogFile = options.result
+    if results.result is not None:
+        testResultLogFile = results.result
     
     testCaseLogFile = None
-    if options.testcaselog is not None:
-        testCaseLogFile = options.testcaselog
-    deploy = deployDataCenter.deployDataCenters(options.config)    
-    if options.load:
+    if results.testcaselog is not None:
+        testCaseLogFile = results.testcaselog
+    deploy = deployDataCenter.deployDataCenters(results.config)    
+    if results.load:
         deploy.loadCfg()
     else:
         deploy.deploy()
         
     format = "text"
     xmlDir = None
-    if options.xmlrunner is not None:
-        xmlDir = options.xmlrunner
+    if results.xmlrunner is not None:
+        xmlDir = results.xmlrunner
         format = "xml"
     
-    if options.testCaseFolder is None:
-        if options.module is None:
+    if results.testCaseFolder is None:
+        if results.module is None:
             parser.print_usage()
             exit(1)
         else:
-            engine = TestCaseExecuteEngine.TestCaseExecuteEngine(deploy.testClient, testCaseLogFile, testResultLogFile, format, xmlDir)
-            engine.loadTestsFromFile(options.module)
+            if results.num_threads == 1:
+                engine = TestCaseExecuteEngine.TestCaseExecuteEngine(deploy.testClient, testCaseLogFile, testResultLogFile, format, xmlDir)
+            else:
+                engine = ThreadedTestCaseExecuteEngine.TestCaseExecuteEngine(deploy.testClient, testCaseLogFile, testResultLogFile, format, xmlDir,results.num_threads)
+
+            engine.loadTestsFromFile(results.module)
             engine.run()
     else:
-       engine = TestCaseExecuteEngine.TestCaseExecuteEngine(deploy.testClient, testCaseLogFile, testResultLogFile, format, xmlDir)
-       engine.loadTestsFromDir(options.testCaseFolder)
+       if results.num_threads == 1:
+           engine = TestCaseExecuteEngine.TestCaseExecuteEngine(deploy.testClient, testCaseLogFile, testResultLogFile, format, xmlDir)
+       else:
+           engine = ThreadedTestCaseExecuteEngine.TestCaseExecuteEngine(deploy.testClient, testCaseLogFile, testResultLogFile, format, xmlDir, results.num_threads)
+
+       engine.loadTestsFromDir(results.testCaseFolder)
        engine.run()
