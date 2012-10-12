@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import urllib2
+import urllib3
 import urllib
 import httplib
 import base64
@@ -37,6 +37,7 @@ class cloudConnection(object):
         self.mgtSvr = mgtSvr
         self.port = port
         self.logging = logging
+        self.connectionPool = urllib3.PoolManager()
         if port == 8096:
             self.auth = False
         else:
@@ -68,9 +69,9 @@ class cloudConnection(object):
         requestUrl += "&signature=%s"%sig
 
         try:
-            self.connection = urllib2.urlopen("http://%s:%d/client/api?%s"%(self.mgtSvr, self.port, requestUrl))
+            self.connection = self.connectionPool.request("GET", "http://%s:%d/client/api?%s"%(self.mgtSvr, self.port, requestUrl))
             self.logging.debug("sending GET request: %s"%requestUrl)
-            response = self.connection.read()
+            response = self.connection.data
             self.logging.info("got response: %s"%response)
         except IOError, e:
             if hasattr(e, 'reason'):
@@ -94,9 +95,9 @@ class cloudConnection(object):
         requests = zip(requests.keys(), requests.values())
         requestUrl = "&".join(["=".join([request[0], urllib.quote_plus(str(request[1]))]) for request in requests])
 
-        self.connection = urllib2.urlopen("http://%s:%d/client/api?%s"%(self.mgtSvr, self.port, requestUrl))
+        self.connection = self.connectionPool.request("GET", "http://%s:%d/client/api?%s"%(self.mgtSvr, self.port, requestUrl))
         self.logging.debug("sending GET request without auth: %s"%requestUrl)
-        response = self.connection.read()
+        response = self.connection.data
         self.logging.info("got response: %s"%response)
         return response
     
