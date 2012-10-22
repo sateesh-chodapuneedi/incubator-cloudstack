@@ -20,7 +20,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.cloudstack</groupId>
-  <artifactId>cloud-api-unittest</artifactId>
+  <artifactId>cloud-api-test</artifactId>
   <name>Apache CloudStack API Unittest</name>
   <version>4.0.0-SNAPSHOT</version>
 
@@ -50,27 +50,15 @@
     <plugins>
       <plugin>
         <groupId>org.apache.cloudstack</groupId>
-        <artifactId>cloud-api-unittest</artifactId>
+        <artifactId>cloud-api-test</artifactId>
         <version>4.0.0-SNAPSHOT</version>
-        <configuration>
-          <includes>
-            <include>../src/com/cloud/agent/api/*.java</include>
-          </includes>
-        </configuration>
       </plugin>
     </plugins>
-    <sourceDirectory>../src/com/cloud/agent/api</sourceDirectory>
-    <testSourceDirectory>src/com/cloud/agent/api</testSourceDirectory>
-    <testOutputDirectory>src/com/cloud/agent/api</testOutputDirectory>
-<!--
-    <testSourceDirectory>target/test-classes</testSourceDirectory>
-    <testOutputDirectory>target/test-classes</testOutputDirectory>
--->
+    <sourceDirectory>../../src/com/cloud/agent/api</sourceDirectory>
+    <testSourceDirectory>java/com/cloud/agent/api</testSourceDirectory>
+    <testOutputDirectory>java/com/cloud/agent/api</testOutputDirectory>
     <testResources>
       <testResource>
-<!--
-        <directory>src/com/cloud/agent/api</directory>
--->
         <directory>target/test-classes</directory>
       </testResource>
     </testResources>
