@@ -652,10 +652,12 @@
     }
 
     // Quick view
-    if (detailView && !detailView.noCompact && !uiCustom) {
+    if (detailView &&
+        !$.isFunction(detailView) &&
+        !detailView.noCompact && !uiCustom) {
       $thead.find('tr').append(
         $('<th></th>')
-          .html('Quickview')
+          .html(_l('label.quickview'))
           .addClass('quick-view reduced-hide')
       );
     }
@@ -1031,7 +1033,10 @@
       }
 
       // Add quick view
-      if (detailView && !detailView.noCompact && !uiCustom) {
+      if (detailView &&
+          !$.isFunction(detailView) &&
+          !detailView.noCompact &&
+          !uiCustom) {
         $quickView = $('<td>').addClass('quick-view reduced-hide')
           .append(
             $('<span>').addClass('icon').html('&nbsp;')
@@ -1055,12 +1060,14 @@
 
             // Title
             $title.append(
-              $('<span>').html('Quickview: '),
+              $('<span>').html(_l('label.quickview') + ': '),
               $('<span>').addClass('title').html(
                 cloudStack.concat(
                   $tr.find('td:first span').html(), 30
                 )
-              ),
+              ).attr({
+                title: $tr.find('td:first span').html()
+              }),
               $('<span>').addClass('icon').html('&nbsp;')
             );
             $quickViewTooltip.append($title);

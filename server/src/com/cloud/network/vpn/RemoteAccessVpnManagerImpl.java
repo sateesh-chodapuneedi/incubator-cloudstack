@@ -212,9 +212,7 @@ public class RemoteAccessVpnManagerImpl implements RemoteAccessVpnService, Manag
     }
 
     @Override @DB
-    public void destroyRemoteAccessVpn(long ipId) throws ResourceUnavailableException {
-        Account caller = UserContext.current().getCaller();
-        
+    public void destroyRemoteAccessVpn(long ipId, Account caller) throws ResourceUnavailableException {
         RemoteAccessVpnVO vpn = _remoteAccessVpnDao.findById(ipId);
         if (vpn == null) {
             s_logger.debug("vpn id=" + ipId + " does not exists ");
@@ -337,9 +335,7 @@ public class RemoteAccessVpnManagerImpl implements RemoteAccessVpnService, Manag
     }
 
     @DB @Override
-    public boolean removeVpnUser(long vpnOwnerId, String username) {
-        Account caller = UserContext.current().getCaller();
-
+    public boolean removeVpnUser(long vpnOwnerId, String username, Account caller) {
         VpnUserVO user = _vpnUsersDao.findByAccountAndUsername(vpnOwnerId, username);
         if (user == null) {
             throw new InvalidParameterValueException("Could not find vpn user " + username);
@@ -497,10 +493,9 @@ public class RemoteAccessVpnManagerImpl implements RemoteAccessVpnService, Manag
     }
 
     @Override
-    public List<VpnUserVO> searchForVpnUsers(ListVpnUsersCmd cmd) {
+    public Pair<List<? extends VpnUser>, Integer> searchForVpnUsers(ListVpnUsersCmd cmd) {
         String username = cmd.getUsername();
         Long id = cmd.getId();
-        
         Account caller = UserContext.current().getCaller();
         List<Long> permittedAccounts = new ArrayList<Long>();
 
@@ -532,11 +527,12 @@ public class RemoteAccessVpnManagerImpl implements RemoteAccessVpnService, Manag
             sc.setParameters("username", username);
         }
 
-        return _vpnUsersDao.search(sc, searchFilter);
+        Pair<List<VpnUserVO>, Integer> result = _vpnUsersDao.searchAndCount(sc, searchFilter);
+        return new Pair<List<? extends VpnUser>, Integer>(result.first(), result.second());
     }
 
     @Override
-    public List<RemoteAccessVpnVO> searchForRemoteAccessVpns(ListRemoteAccessVpnsCmd cmd) {
+    public Pair<List<? extends RemoteAccessVpn>, Integer> searchForRemoteAccessVpns(ListRemoteAccessVpnsCmd cmd) {
         // do some parameter validation
         Account caller = UserContext.current().getCaller();
         Long ipAddressId = cmd.getPublicIpId();
@@ -579,7 +575,8 @@ public class RemoteAccessVpnManagerImpl implements RemoteAccessVpnService, Manag
             sc.setParameters("serverAddressId", ipAddressId);
         }
 
-        return _remoteAccessVpnDao.search(sc, filter);
+        Pair<List<RemoteAccessVpnVO>, Integer> result = _remoteAccessVpnDao.searchAndCount(sc, filter);
+        return new Pair<List<? extends RemoteAccessVpn>, Integer> (result.first(), result.second());
     }
 
     @Override

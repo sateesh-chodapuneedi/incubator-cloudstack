@@ -1357,7 +1357,7 @@ div.list-view td.state.off span {
   width: 400px;
   min-height: 100px;
   height: auto;
-  overflow: auto;
+  overflow: hidden;
   display: inline-block;
   /*+box-shadow:0px 7px 9px #676F76;*/
   -moz-box-shadow: 0px 7px 9px #676F76;
@@ -2445,11 +2445,47 @@ div.detail-group.actions td {
   overflow: hidden;
 }
 
+#browser.panel-highlight {
+  overflow: visible;
+}
+
+#browser.panel-highlight .panel {
+}
+
 #browser div.panel {
   height: 698px;
   background: #F7F7F7;
   border-right: 1px solid #A5A5A5;
   overflow: visible;
+}
+
+#browser div.panel.panel-highlight-wrapper {
+  display: inline-block;
+  background: none;
+  /*+border-radius:9px;*/
+  -moz-border-radius: 9px;
+  -webkit-border-radius: 9px;
+  -khtml-border-radius: 9px;
+  border-radius: 9px;
+  margin-top: 7px;
+  /*+box-shadow:0px 0px 12px #000000;*/
+  -moz-box-shadow: 0px 0px 12px #000000;
+  -webkit-box-shadow: 0px 0px 12px #000000;
+  -o-box-shadow: 0px 0px 12px #000000;
+  box-shadow: 0px 0px 12px #000000;
+  border: 3px solid #FFFFFF;
+  height: 542px;
+  overflow: hidden;
+  position: absolute;
+  z-index: 10000;
+  padding: 78px 0px 67px 51px;
+}
+
+#browser div.panel.panel-highlight-wrapper .panel {
+  left: 20px !important;
+  height: 631px;
+  overflow: hidden;
+  top: 3px;
 }
 
 .project-view #browser div.panel {
@@ -2472,6 +2508,38 @@ div.detail-group.actions td {
   left: -10px;
   position: absolute;
   background: url(../images/bg-panel-shadow.png) repeat-y 0px 0px;
+}
+
+#browser.panel-highlight {
+  overflow: visible;
+}
+
+#browser.panel-highlight .panel.highlighted {
+  /*+box-shadow:0px 10px 11px #5C5C5C;*/
+  -moz-box-shadow: 0px 10px 11px #5C5C5C;
+  -webkit-box-shadow: 0px 10px 11px #5C5C5C;
+  -o-box-shadow: 0px 10px 11px #5C5C5C;
+  box-shadow: 0px 10px 11px #5C5C5C;
+  border: 5px solid #FFFFFF;
+  /*+border-radius:6px;*/
+  -moz-border-radius: 6px;
+  -webkit-border-radius: 6px;
+  -khtml-border-radius: 6px;
+  border-radius: 6px;
+  margin-top: 21px;
+}
+
+#browser.panel-highlight .panel > .shadow {
+  display: none;
+}
+
+#browser .highlight-arrow {
+  width: 24px;
+  height: 19px;
+  background: url(../images/sprites.png) -590px -1295px;
+  position: absolute;
+  top: -22px;
+  left: 80px;
 }
 
 /*Toolbar*/
@@ -2853,7 +2921,7 @@ div.toolbar div.button.add span {
 }
 
 /*** Section switcher*/
-div.list-view div.toolbar div.section-switcher {
+div.panel div.toolbar div.section-switcher {
   margin-top: 6px;
   margin-left: 10px;
   float: left;
@@ -2863,12 +2931,12 @@ div.list-view div.toolbar div.section-switcher {
   display: none;
 }
 
-div.list-view div.toolbar div.section-switcher div.section-select {
+div.toolbar div.section-switcher div.section-select {
   float: right;
   background: #A8AFB6;
 }
 
-div.list-view div.toolbar div.section-switcher div.section {
+div.toolbar div.section-switcher div.section {
   float: left;
   font-size: 11px;
   font-weight: bold;
@@ -2885,7 +2953,7 @@ div.list-view div.toolbar div.section-switcher div.section {
   text-shadow: 0px 1px 1px #EDEDED;
 }
 
-div.list-view div.toolbar div.section-switcher div.section a {
+div.toolbar div.section-switcher div.section a {
   background: url(../images/bg-section-switcher.png) repeat-x 0px -22px;
   text-decoration: none;
   display: block;
@@ -2894,7 +2962,7 @@ div.list-view div.toolbar div.section-switcher div.section a {
   border: 1px solid #979FA4;
 }
 
-div.list-view div.toolbar div.section-switcher div.section a.active {
+div.toolbar div.section-switcher div.section a.active {
   background: url(../images/bg-section-switcher.png) repeat-x 0px -21px;
   background-position: 0px 0px;
   border: none;
@@ -2908,7 +2976,7 @@ div.list-view div.toolbar div.section-switcher div.section a.active {
   box-shadow: inset 0px 1px 5px #546874;
 }
 
-div.list-view div.toolbar div.section-switcher div.section.first a {
+div.toolbar div.section-switcher div.section.first a {
   /*+border-radius:4px 0 0 5px;*/
   -moz-border-radius: 4px 0 0 5px;
   -webkit-border-radius: 4px 0 0 5px;
@@ -2916,7 +2984,7 @@ div.list-view div.toolbar div.section-switcher div.section.first a {
   border-radius: 4px 0 0 5px;
 }
 
-div.list-view div.toolbar div.section-switcher div.section.last a {
+div.toolbar div.section-switcher div.section.last a {
   /*+border-radius:0 4px 4px 0px;*/
   -moz-border-radius: 0 4px 4px 0px;
   -webkit-border-radius: 0 4px 4px 0px;
@@ -2924,7 +2992,7 @@ div.list-view div.toolbar div.section-switcher div.section.last a {
   border-radius: 0 4px 4px 0px;
 }
 
-div.list-view div.toolbar div.section-switcher div.section.first.last a {
+div.toolbar div.section-switcher div.section.first.last a {
   /*+border-radius:5px;*/
   -moz-border-radius: 5px;
   -webkit-border-radius: 5px;
@@ -2933,17 +3001,17 @@ div.list-view div.toolbar div.section-switcher div.section.first.last a {
   border-radius: 5px 5px 5px 5px;
 }
 
-div.list-view div.toolbar div.section-switcher div.section-select {
+div.toolbar div.section-switcher div.section-select {
   float: left;
   background: #A8AFB6;
   height: 26px;
 }
 
-.project-view div.list-view div.toolbar div.section-switcher div.section-select {
+.project-view div.toolbar div.section-switcher div.section-select {
   background: transparent;
 }
 
-div.list-view div.toolbar div.section-switcher div.section-select select {
+div.toolbar div.section-switcher div.section-select select {
   width: 142px;
   height: 21px;
   margin-right: 13px;
@@ -2957,7 +3025,7 @@ div.list-view div.toolbar div.section-switcher div.section-select select {
   border-radius: 4px 4px 4px 4px;
 }
 
-div.list-view div.toolbar div.section-switcher div.section-select label {
+div.toolbar div.section-switcher div.section-select label {
   margin: 0 9px 0 0;
 }
 
@@ -9408,6 +9476,38 @@ div.panel.ui-dialog div.list-view div.fixed-header {
 
 .new-project .multi-edit .data .data-item.even td {
   background: #DFE1E3;
+}
+
+/*Tooltip*/
+.tooltip-box {
+  width: 15%;
+  height: auto;
+  display: inline-block, padding: 4px;
+  background: #FFFFFF;
+  border: 1px solid #BEB8B8;
+  padding: 10px;
+  /*+border-radius:4px;*/
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+  -khtml-border-radius: 4px;
+  border-radius: 4px;
+  margin-left: 23px;
+  /*+box-shadow:0px 1px 12px #353535;*/
+  -moz-box-shadow: 0px 1px 12px #353535;
+  -webkit-box-shadow: 0px 1px 12px #353535;
+  -o-box-shadow: 0px 1px 12px #353535;
+  box-shadow: 0px 1px 12px #353535;
+}
+
+.tooltip-box .arrow {
+  width: 19px;
+  height: 30px;
+  background: url(../images/sprites.png) -585px -947px;
+  /*+placement:shift -16px 3px;*/
+  position: relative;
+  left: -16px;
+  top: 3px;
+  position: absolute;
 }
 
 /*Tagger*/

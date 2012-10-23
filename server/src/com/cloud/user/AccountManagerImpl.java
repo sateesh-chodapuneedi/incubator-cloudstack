@@ -572,7 +572,7 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
             for (VolumeVO volume : volumes) {
                 if (!volume.getState().equals(Volume.State.Destroy)) {
                     try {
-                        _storageMgr.deleteVolume(volume.getId());
+                        _storageMgr.deleteVolume(volume.getId(), caller);
                     } catch (Exception ex) {
                         s_logger.warn("Failed to cleanup volumes as a part of account id=" + accountId + " cleanup due to Exception: ", ex);
                         accountCleanupNeeded = true;
@@ -585,12 +585,12 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
             List<VpnUserVO> vpnUsers = _vpnUser.listByAccount(accountId);
 
             for (VpnUserVO vpnUser : vpnUsers) {
-                _remoteAccessVpnMgr.removeVpnUser(accountId, vpnUser.getUsername());
+                _remoteAccessVpnMgr.removeVpnUser(accountId, vpnUser.getUsername(), caller);
             }
 
             try {
                 for (RemoteAccessVpnVO vpn : remoteAccessVpns) {
-                    _remoteAccessVpnMgr.destroyRemoteAccessVpn(vpn.getServerAddressId());
+                    _remoteAccessVpnMgr.destroyRemoteAccessVpn(vpn.getServerAddressId(), caller);
                 }
             } catch (ResourceUnavailableException ex) {
                 s_logger.warn("Failed to cleanup remote access vpn resources as a part of account id=" + accountId + " cleanup due to Exception: ", ex);
@@ -608,7 +608,7 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
             if (networks != null) {
                 for (NetworkVO network : networks) {
 
-                    ReservationContext context = new ReservationContextImpl(null, null, getActiveUser(callerUserId), account);
+                    ReservationContext context = new ReservationContextImpl(null, null, getActiveUser(callerUserId), caller);
 
                     if (!_networkMgr.destroyNetwork(network.getId(), context)) {
                         s_logger.warn("Unable to destroy network " + network + " as a part of account id=" + accountId + " cleanup.");
@@ -626,7 +626,7 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
             List<? extends Vpc> vpcs = _vpcMgr.getVpcsForAccount(account.getId());
             for (Vpc vpc : vpcs) {
 
-                if (!_vpcMgr.destroyVpc(vpc)) {
+                if (!_vpcMgr.destroyVpc(vpc, caller, callerUserId)) {
                     s_logger.warn("Unable to destroy VPC " + vpc + " as a part of account id=" + accountId + " cleanup.");
                     accountCleanupNeeded = true;
                     vpcsDeleted = false;
@@ -1980,7 +1980,7 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
     }
 
     @Override
-    public List<AccountVO> searchForAccounts(ListAccountsCmd cmd) {
+    public Pair<List<? extends Account>, Integer> searchForAccounts(ListAccountsCmd cmd) {
         Account caller = UserContext.current().getCaller();
         Long domainId = cmd.getDomainId();
         Long accountId = cmd.getId();
@@ -2095,11 +2095,12 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
             }
         }
 
-        return _accountDao.search(sc, searchFilter);
+        Pair<List<AccountVO>, Integer> result = _accountDao.searchAndCount(sc, searchFilter);
+        return new Pair<List<? extends Account>, Integer>(result.first(), result.second());
     }
 
     @Override
-    public List<UserAccountVO> searchForUsers(ListUsersCmd cmd) throws PermissionDeniedException {
+    public Pair<List<? extends UserAccount>, Integer> searchForUsers(ListUsersCmd cmd) throws PermissionDeniedException {
         Account caller = UserContext.current().getCaller();
 
         Long domainId = cmd.getDomainId();
@@ -2129,7 +2130,7 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
         if (id != null && id == 1) {
             // system user should NOT be searchable
             List<UserAccountVO> emptyList = new ArrayList<UserAccountVO>();
-            return emptyList;
+            return new Pair<List<? extends UserAccount>, Integer>(emptyList, 0);
         } else if (id != null) {
             sb.and("id", sb.entity().getId(), SearchCriteria.Op.EQ);
         } else {
@@ -2192,7 +2193,8 @@ public class AccountManagerImpl implements AccountManager, AccountService, Manag
             sc.setParameters("state", state);
         }
 
-        return _userAccountDao.search(sc, searchFilter);
+        Pair<List<UserAccountVO>, Integer> result = _userAccountDao.searchAndCount(sc, searchFilter);
+        return new Pair<List<? extends UserAccount>, Integer>(result.first(), result.second());
     }
 
     @Override

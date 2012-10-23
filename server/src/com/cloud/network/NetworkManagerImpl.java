@@ -2726,8 +2726,8 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
             s_logger.warn("Only guest networks can be created using this method");
             return null;
         }
-        
-        boolean updateResourceCount = (!ntwkOff.getSpecifyVlan() && aclType == ACLType.Account);
+
+        boolean updateResourceCount = resourceCountNeedsUpdate(ntwkOff, aclType);
         //check resource limits
         if (updateResourceCount) {
             _resourceLimitMgr.checkResourceLimit(owner, ResourceType.network);
@@ -3551,7 +3551,7 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
                         s_logger.debug("Sending destroy to " + element);
                     }
 
-                    if (!element.destroy(network)) {
+                    if (!element.destroy(network, context)) {
                         success = false;
                         s_logger.warn("Unable to complete destroy of the network: failed to destroy network element " + element.getName());
                     }
@@ -3587,11 +3587,22 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
                 network.setState(Network.State.Destroy);
                 _networksDao.update(network.getId(), network);
                 _networksDao.remove(network.getId());
+                
+                NetworkOffering ntwkOff = _configMgr.getNetworkOffering(network.getNetworkOfferingId());
+                boolean updateResourceCount = resourceCountNeedsUpdate(ntwkOff, network.getAclType());
+                if (updateResourceCount) {
+                    _resourceLimitMgr.decrementResourceCount(owner.getId(), ResourceType.network);
+                }
                 txn.commit();
             }
         }
 
         return success;
+    }
+
+    private boolean resourceCountNeedsUpdate(NetworkOffering ntwkOff, ACLType aclType) {
+        boolean updateResourceCount = (!ntwkOff.getSpecifyVlan() && aclType == ACLType.Account);
+        return updateResourceCount;
     }
 
     protected boolean deleteVlansInNetwork(long networkId, long userId, Account callerAccount) {
@@ -4373,7 +4384,7 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
         // the code would be triggered
         s_logger.debug("Cleaning up remote access vpns as a part of public IP id=" + ipId + " release...");
         try {
-            _vpnMgr.destroyRemoteAccessVpn(ipId);
+            _vpnMgr.destroyRemoteAccessVpn(ipId, caller);
         } catch (ResourceUnavailableException e) {
             s_logger.warn("Unable to destroy remote access vpn for ip id=" + ipId + " as a part of ip release", e);
             success = false;
@@ -5250,7 +5261,7 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
     }
 
     @Override
-    public List<? extends PhysicalNetwork> searchPhysicalNetworks(Long id, Long zoneId, String keyword, Long startIndex, Long pageSize, String name) {
+    public Pair<List<? extends PhysicalNetwork>, Integer> searchPhysicalNetworks(Long id, Long zoneId, String keyword, Long startIndex, Long pageSize, String name) {
         Filter searchFilter = new Filter(PhysicalNetworkVO.class, "id", Boolean.TRUE, startIndex, pageSize);
         SearchCriteria<PhysicalNetworkVO> sc = _physicalNetworkDao.createSearchCriteria();
 
@@ -5266,7 +5277,8 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
             sc.addAnd("name", SearchCriteria.Op.LIKE, "%" + name + "%");
         }
 
-        return _physicalNetworkDao.search(sc, searchFilter);
+        Pair<List<PhysicalNetworkVO>, Integer> result =  _physicalNetworkDao.searchAndCount(sc, searchFilter);
+        return new Pair<List<? extends PhysicalNetwork>, Integer>(result.first(), result.second());
     }
 
     @Override
@@ -5716,7 +5728,8 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
     }
 
     @Override
-    public List<? extends PhysicalNetworkServiceProvider> listNetworkServiceProviders(Long physicalNetworkId, String name, String state, Long startIndex, Long pageSize) {
+    public Pair<List<? extends PhysicalNetworkServiceProvider>, Integer> listNetworkServiceProviders(Long physicalNetworkId,
+            String name, String state, Long startIndex, Long pageSize) {
 
         Filter searchFilter = new Filter(PhysicalNetworkServiceProviderVO.class, "id", false, startIndex, pageSize);
         SearchBuilder<PhysicalNetworkServiceProviderVO> sb = _pNSPDao.createSearchBuilder();
@@ -5734,7 +5747,8 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
             sc.addAnd("state", Op.EQ, state);
         }
 
-        return _pNSPDao.search(sc, searchFilter);
+        Pair<List<PhysicalNetworkServiceProviderVO>, Integer> result =  _pNSPDao.searchAndCount(sc, searchFilter);
+        return new Pair<List<? extends PhysicalNetworkServiceProvider>, Integer>(result.first(), result.second());
     }
 
     @Override
@@ -6328,7 +6342,7 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
     }
 
     @Override
-    public List<? extends PhysicalNetworkTrafficType> listTrafficTypes(Long physicalNetworkId) {
+    public Pair<List<? extends PhysicalNetworkTrafficType>, Integer> listTrafficTypes(Long physicalNetworkId) {
         PhysicalNetworkVO network = _physicalNetworkDao.findById(physicalNetworkId);
         if (network == null) {
             InvalidParameterValueException ex = new InvalidParameterValueException("Physical Network with specified id doesn't exist in the system");
@@ -6336,7 +6350,8 @@ public class NetworkManagerImpl implements NetworkManager, NetworkService, Manag
             throw ex;
         }
 
-        return _pNTrafficTypeDao.listBy(physicalNetworkId);
+        Pair<List<PhysicalNetworkTrafficTypeVO>, Integer> result = _pNTrafficTypeDao.listAndCountBy(physicalNetworkId);
+        return new Pair<List<? extends PhysicalNetworkTrafficType>, Integer>(result.first(), result.second());
     }
 
     @Override

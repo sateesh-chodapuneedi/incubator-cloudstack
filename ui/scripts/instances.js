@@ -42,9 +42,10 @@
 				}			
 				return hiddenFields;
 			},			
-      fields: {        
-        displayname: { label: 'label.display.name' },
-				name: { label: 'label.host.name' },
+      fields: {      
+				name: { label: 'label.name' },
+				instancename: { label: 'label.internal.name' },
+				displayname: { label: 'label.display.name' },
         zonename: { label: 'label.zone.name' },
         state: {
           label: 'label.state',         
@@ -196,9 +197,7 @@
 					  hostid: args.context.hosts[0].id
 					});
 				}
-							
-        delete data.details;	//remove "details: 'min'" from data	
-								
+					 							
         $.ajax({
           url: createURL('listVirtualMachines'),
           data: data,          

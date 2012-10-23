@@ -16,6 +16,25 @@
 // under the License.
 
 (function(cloudStack, $) {
+  var ingressEgressDataMap = function(elem) {
+    var elemData = {
+      id: elem.ruleid,
+      protocol: elem.protocol,
+      startport: elem.startport,
+      endport: elem.endport,
+      cidr: elem.cidr ? elem.cidr : ''.concat(elem.account, ' - ', elem.securitygroupname)
+    };
+
+    if (elemData.startport == 0 && elemData.endport) {
+      elemData.startport = '0';
+    } else if (elem.icmptype && elem.icmpcode) {
+      elemData.startport = elem.icmptype;
+      elemData.endport = elem.icmpcode;
+    }
+
+    return elemData;
+  };
+  
   var ipChangeNotice = function() {
     cloudStack.dialog.confirm({
       message: 'message.ip.address.changed',
@@ -253,12 +272,12 @@
                 title: 'label.add.guest.network',
                 desc: 'message.add.guest.network',
                 fields: {
-                  name: { label: 'label.name', validation: { required: true } },
-                  displayText: { label: 'label.display.text', validation: { required: true }},
+                  name: { label: 'label.name', validation: { required: true }, docID: 'helpGuestNetworkName' },
+                  displayText: { label: 'label.display.text', validation: { required: true }, docID: 'helpGuestNetworkDisplayText'},
                   zoneId: {
                     label: 'label.zone',
                     validation: { required: true },
-
+                    docID: 'helpGuestNetworkZone',
 
                     select: function(args) {
                       $.ajax({
@@ -283,7 +302,8 @@
                   networkOfferingId: {
                     label: 'label.network.offering',
                     validation: { required: true },
-										dependsOn: 'zoneId',
+                    dependsOn: 'zoneId',
+                    docID: 'helpGuestNetworkNetworkOffering',
                     select: function(args) {
                       $.ajax({
                         url: createURL('listVPCs'),
@@ -367,8 +387,8 @@
                     }
                   },
 
-                  guestGateway: { label: 'label.guest.gateway' },
-                  guestNetmask: { label: 'label.guest.netmask' },
+                  guestGateway: { label: 'label.guest.gateway', docID: 'helpGuestNetworkGateway' },
+                  guestNetmask: { label: 'label.guest.netmask', docID: 'helpGuestNetworkNetmask' },
                   networkDomain: { label: 'label.network.domain' }
                 }
               },
@@ -422,22 +442,9 @@
           id: 'networks',
           fields: {
             name: { label: 'label.name' },
-            account: { label: 'label.account' },
-            //zonename: { label: 'label.zone' },
-            type: { label: 'label.type' },
-            vlan: { label: 'label.vlan' },
-            cidr: { label: 'label.cidr' }
-            /*
-             state: {
-             label: 'label.state',
-             indicator: {
-             'Implemented': 'on',
-             'Setup': 'on',
-             'Allocated': 'on',
-             'Destroyed': 'off'
-             }
-             }
-             */
+            account: { label: 'label.account' },            
+            type: { label: 'label.type' },            
+            cidr: { label: 'label.cidr' }           
           },
           
 					advSearchFields: {					 
@@ -841,7 +848,19 @@
                     hiddenFields.push("networkdomain");
                   }
                   return hiddenFields;
+                },								
+								
+								preFilter: function(args) {
+                  var hiddenFields;
+                  if(isAdmin()) {
+                    hiddenFields = [];
+                  }
+                  else {
+                    hiddenFields = ["vlan"];
+                  }
+                  return hiddenFields;
                 },
+																
                 fields: [
                   {
                     name: {
@@ -871,9 +890,7 @@
                           return "No";
                       }
                     },
-                    vlan: { label: 'label.vlan.id' },
-
-                    networkofferingname: { label: 'label.network.offering' },
+                    vlan: { label: 'label.vlan.id' },               
 
                     networkofferingid: {
                       label: 'label.network.offering',
@@ -1730,25 +1747,27 @@
             tabs: {
               details: {
                 title: 'label.details',
-								
-								preFilter: function(args) {
-								  var hiddenFields = [];								
-									var zoneObj;
-									$.ajax({
-									  url: createURL("listZones&id=" + args.context.ipAddresses[0].zoneid),
-										dataType: "json",
-										async: false,
-										success: function(json) {										  
-											zoneObj = json.listzonesresponse.zone[0];											
-										}
-									});							
-									if(zoneObj.networktype == "Advanced") {
-									  hiddenFields.push("issystem");
-										hiddenFields.push("purpose");
-									}																	
-									return hiddenFields;								
-								},
-								
+                preFilter: function(args) {
+                  var hiddenFields = [];
+                  var zoneObj;
+                  $.ajax({
+                    url: createURL("listZones&id=" + args.context.ipAddresses[0].zoneid),
+                    dataType: "json",
+                    async: false,
+                    success: function(json) {
+                      zoneObj = json.listzonesresponse.zone[0];
+                    }
+                  });
+                  if(zoneObj.networktype == "Advanced") {
+                    hiddenFields.push("issystem");
+                    hiddenFields.push("purpose");
+                  }
+									
+									if(!isAdmin()) {                   
+                    hiddenFields.push("vlanname");
+                  }									
+                  return hiddenFields;
+                },
                 fields: [
                   {
                     ipaddress: { label: 'label.ip' }
@@ -1821,8 +1840,10 @@
                     var havingFirewallService = false;
                     var havingPortForwardingService = false;
                     var havingLbService = false;
-										var havingVpnService = false;		
-										
+                    var havingVpnService = false;
+
+										var FirewallProviderArrayIncludesJuniperSRX = false;
+									
                     if('networks' in args.context && args.context.networks[0].vpcid == null) { //a non-VPC network from Guest Network section
                       $.ajax({
                         url: createURL('listNetworkOfferings'),
@@ -1835,14 +1856,25 @@
                           var networkoffering = json.listnetworkofferingsresponse.networkoffering[0];
                           $(networkoffering.service).each(function(){
                             var thisService = this;
-                            if(thisService.name == "Firewall")
+                            if(thisService.name == "Firewall") {
                               havingFirewallService = true;
-                            if(thisService.name == "PortForwarding")
+															var providerArray = thisService.provider;
+															for(var k = 0; k < providerArray.length; k++) {
+																if(providerArray[k].name == "JuniperSRX") {
+																	FirewallProviderArrayIncludesJuniperSRX = true;
+																	break;
+																}
+															}		                              
+														}
+                            if(thisService.name == "PortForwarding") {
                               havingPortForwardingService = true;
-                            if(thisService.name == "Lb")
+														}
+                            if(thisService.name == "Lb") {
                               havingLbService = true;
-                            if(thisService.name == "Vpn")
+														}
+                            if(thisService.name == "Vpn") {
                               havingVpnService = true;
+														}
                           });
                         }
                       });
@@ -1961,7 +1993,24 @@
                         });
                       }
                     }
-
+																				
+										if(FirewallProviderArrayIncludesJuniperSRX == true) { //if Firewall is provided by JuniperSRX 										  								
+										  $.ajax({
+                        url: createURL('listPortForwardingRules'),
+                        data: {
+                          ipaddressid: args.context.ipAddresses[0].id,
+                          listAll: true
+                        },
+												async: false,
+                        success: function(json) {												  
+													var rules = json.listportforwardingrulesresponse.portforwardingrule;													
+													if(rules != null && rules.length > 0) {
+													  disallowedActions.push("firewall"); //hide Firewall icon when Port forwarding is configured on IP Address 		
+													}
+												}
+											});											
+										}
+										
                     return disallowedActions;
                   },
 
@@ -2004,14 +2053,44 @@
                               $icmpFields.parent().find('label.error').hide();
                             }
                           });
-
-                          args.response.success({
-                            data: [
-                              { name: 'tcp', description: 'TCP' },
-                              { name: 'udp', description: 'UDP' },
-                              { name: 'icmp', description: 'ICMP' }
-                            ]
-                          });
+													
+													var data = [
+														{ name: 'tcp', description: 'TCP' },
+														{ name: 'udp', description: 'UDP' }
+													];
+																										
+													//ICMP portocol is not supported in Firewall provided by JuniperSRX 
+                          var FirewallProviderArrayIncludesJuniperSRX = false;																
+													if('networks' in args.context) {
+														$.ajax({
+															url: createURL('listNetworkOfferings'),
+															data: {
+																id: args.context.networks[0].networkofferingid
+															},
+															async: false,
+															success: function(json) {		
+																var serviceArray = json.listnetworkofferingsresponse.networkoffering[0].service;
+																
+																for(var i = 0; i < serviceArray.length; i++) {
+																	if(serviceArray[i].name == "Firewall") {
+																		var providerArray = serviceArray[i].provider;
+																		for(var k = 0; k < providerArray.length; k++) {
+																			if(providerArray[k].name == "JuniperSRX") {
+																				FirewallProviderArrayIncludesJuniperSRX = true;
+																				break;
+																			}
+																		}																					
+																		break;
+																	}															
+																}															
+															}
+														});			
+													}	
+													if(FirewallProviderArrayIncludesJuniperSRX == false) {																
+														data.push({ name: 'icmp', description: 'ICMP' }); //show ICMP option only when provider is not JuniperSRX
+													}			
+													
+                          args.response.success({data: data});
                         }
                       },
                       'startport': { edit: true, label: 'label.start.port' },
@@ -3410,15 +3489,7 @@
                           data: $.map(
                             data.listsecuritygroupsresponse.securitygroup[0].ingressrule ? 
                               data.listsecuritygroupsresponse.securitygroup[0].ingressrule : [],
-                            function(elem) {
-                              return {
-                                id: elem.ruleid,
-                                protocol: elem.protocol,
-                                startport: elem.startport ? elem.startport : elem.icmptype,
-                                endport: elem.endport ? elem.endport : elem.icmpcode,
-                                cidr: elem.cidr ? elem.cidr : ''.concat(elem.account, ' - ', elem.securitygroupname)
-                              };
-                            }
+                            ingressEgressDataMap
                           )
                         });
                       }
@@ -3587,15 +3658,7 @@
                           data: $.map(
                             data.listsecuritygroupsresponse.securitygroup[0].egressrule ? 
                               data.listsecuritygroupsresponse.securitygroup[0].egressrule : [],
-                            function(elem) {
-                              return {
-                                id: elem.ruleid,
-                                protocol: elem.protocol,
-                                startport: elem.startport ? elem.startport : elem.icmptype,
-                                endport: elem.endport ? elem.endport : elem.icmpcode,
-                                cidr: elem.cidr ? elem.cidr : ''.concat(elem.account, ' - ', elem.securitygroupname)
-                              };
-                            }
+                            ingressEgressDataMap
                           )
                         });
                       }
@@ -3767,16 +3830,19 @@
                   }
                 },
                 fields: {
-                  name: { 
-									  label: 'label.name', 
-										validation: { required: true } 
-									},   
+                  name: {
+                    label: 'label.name',
+                    docID: 'helpVPCName',
+                    validation: { required: true }
+                  },
                   displaytext: {
                     label: 'label.description',
+                    docID: 'helpVPCDescription',
                     validation: { required: true }
                   },
                   zoneid: {
                     label: 'label.zone',
+                    docID: 'helpVPCZone',
                     validation: { required: true },
                     select: function(args) {
                       var data = { listAll: true };
@@ -3802,9 +3868,11 @@
                   },
                   cidr: {
                     label: 'label.super.cidr.for.guest.networks',
+                    docID: 'helpVPCSuperCIDR',
                     validation: { required: true }
                   },
                   networkdomain: {
+                    docID: 'helpVPCDomain',
                     label: 'label.DNS.domain.for.guest.networks'
                   }
                 }

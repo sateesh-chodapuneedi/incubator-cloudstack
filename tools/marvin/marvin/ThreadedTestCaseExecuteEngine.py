@@ -47,13 +47,14 @@ class ThreadedTests(threading.Thread):
        self.testqueue.task_done()
 
 class TestCaseExecuteEngine(object):
-    def __init__(self, testclient, testcaseLogFile=None, testResultLogFile=None, format="text", xmlDir="xml-reports",num_threads=1):
+    def __init__(self, testclient, config, testcaseLogFile=None, testResultLogFile=None, format="text", xmlDir="xml-reports",num_threads=1):
         """
         Initialize the testcase execution engine, just the basics here
         @var testcaseLogFile: client log file
         @var testResultLogFile: summary report file  
         """
         self.testclient = testclient
+        self.config = config
         self.logformat = logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s")
         self.loader = unittest.loader.TestLoader()
         self.suite = None
@@ -104,6 +105,7 @@ class TestCaseExecuteEngine(object):
                 
                 #inject testclient and logger into each unittest 
                 setattr(test, "testClient", self.testclient)
+                setattr(test, "config", self.config)
                 setattr(test, "debug", partial(testCaseLogger, logger=testcaselogger))
                 setattr(test.__class__, "clstestclient", self.testclient)
                 if hasattr(test, "UserName"):
