@@ -98,17 +98,27 @@
 
         var $form = options.$form;
         var viewArgs = $detailView.data('view-args');
+        var $loading = $('<div>').addClass('loading-overlay');
+
+        var setLoadingState = function() {
+          if (viewArgs && viewArgs.onPerformAction) {
+            viewArgs.onPerformAction();
+          }
+
+          $detailView.addClass('detail-view-loading-state');
+          $detailView.prepend($loading);
+        };
 
         if (customAction && !noAdd) {
           customAction({
             context: context,
             $detailView: $detailView,
+            start: setLoadingState,
             complete: function(args) {
-              // Set loading appearance
-              var $loading = $('<div>').addClass('loading-overlay');
-
-              $detailView.prepend($loading);
-
+              if (!$detailView.hasClass('detail-view-loading-state')) {
+                setLoadingState();
+              }
+              
               args = args ? args : {};
 
               var $item = args.$item;
@@ -123,9 +133,14 @@
 
                 // Success
                 function(args) {
+                  if (viewArgs && viewArgs.onActionComplete) {
+                    viewArgs.onActionComplete();
+                  }
+
                   if (!$detailView.parents('html').size()) return;
 
                   $loading.remove();
+                  $detailView.removeClass('detail-view-loading-state');
                   replaceListViewItem($detailView, args.data);
 
                   if (!noRefresh) {

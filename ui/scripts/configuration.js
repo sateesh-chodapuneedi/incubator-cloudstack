@@ -1165,7 +1165,9 @@
 																				
 	                  $(':ui-dialog').dialog('option', 'position', 'center');
 										
-										//hide/show service fields upon guestIpType(Shared/Isolated), zoneType(Advanced/Basic), having VpcVirtualRouter or not ***** (begin) *****						
+										//CS-16612 show all services regardless of guestIpType(Shared/Isolated)
+										/*
+										//hide/show service fields upon guestIpType(Shared/Isolated), having VpcVirtualRouter or not ***** (begin) *****						
 										var serviceFieldsToHide = [];										
 										if($guestTypeField.val() == 'Shared') { //Shared network offering
 										  serviceFieldsToHide = [
@@ -1230,7 +1232,8 @@
                         }													
 											}											
 										}
-										//hide/show service fields upon guestIpType(Shared/Isolated), zoneType(Advanced/Basic), having VpcVirtualRouter or not ***** (end) *****			
+										//hide/show service fields upon guestIpType(Shared/Isolated), having VpcVirtualRouter or not ***** (end) *****			
+										*/
 												
 
                     //show LB InlineMode dropdown only when (1)LB Service is checked (2)Service Provider is F5 							
@@ -1617,11 +1620,13 @@
 											inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].capabilityvalue'] = true; //because this checkbox's value == "on"
 											serviceCapabilityIndex++;
 										} 
-                    else if ((key == 'service.Lb.inlineModeDropdown') && ("Lb" in serviceProviderMap) && (serviceProviderMap.Lb	== "F5BigIp")) {                      							
-											inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].service'] = 'lb';
-											inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].capabilitytype'] = 'InlineMode';
-											inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].capabilityvalue'] = value;
-											serviceCapabilityIndex++;
+                    else if ((key == 'service.Lb.inlineModeDropdown') && ("Lb" in serviceProviderMap) && (serviceProviderMap.Lb	== "F5BigIp")) {   
+										  if(value == 'true') { //CS-16605 do not pass parameter if value is 'false'(side by side)
+												inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].service'] = 'lb';
+												inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].capabilitytype'] = 'InlineMode';
+												inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].capabilityvalue'] = value;
+												serviceCapabilityIndex++;
+											}
 										} 										
 										else if ((key == 'service.Lb.lbIsolationDropdown') && ("Lb" in serviceProviderMap)) {											
 											inputData['servicecapabilitylist[' + serviceCapabilityIndex + '].service'] = 'lb';
