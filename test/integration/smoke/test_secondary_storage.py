@@ -20,9 +20,9 @@
 import marvin
 from marvin.cloudstackTestCase import *
 from marvin.cloudstackAPI import *
-from integration.lib.utils import *
-from integration.lib.base import *
-from integration.lib.common import *
+from marvin.integration.lib.utils import *
+from marvin.integration.lib.base import *
+from marvin.integration.lib.common import *
 from nose.plugins.attrib import attr
 
 #Import System modules
@@ -241,7 +241,6 @@ class TestSecStorageServices(cloudstackTestCase):
                                         self.apiclient,
                                         systemvmtype='secondarystoragevm',
                                         zoneid=self.zone.id,
-                                        podid=self.pod.id
                                         )
             if not isinstance(list_ssvm_response, list):
                 # Sleep to ensure SSVMs are Up and Running
