@@ -20,6 +20,8 @@ package org.apache.cloudstack.storage.image;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.platform.subsystem.api.storage.SnapshotProfile;
 import org.apache.cloudstack.platform.subsystem.api.storage.TemplateStrategy;
@@ -29,10 +31,9 @@ import org.apache.cloudstack.storage.manager.SecondaryStorageManager;
 import com.cloud.storage.TemplateProfile;
 import com.cloud.storage.VMTemplateZoneVO;
 import com.cloud.storage.dao.VMTemplateZoneDao;
-import com.cloud.utils.component.Inject;
 
 public class ImageOrchestratorImpl implements ImageOrchestrator {
-	@Inject
+	
 	SecondaryStorageManager _secStorageMgr;
 	@Inject
 	VMTemplateZoneDao _templateZoneDao;

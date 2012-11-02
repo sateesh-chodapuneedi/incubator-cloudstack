@@ -3,6 +3,8 @@ package org.apache.cloudstack.storage.lifecycle;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStoreDriver;
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStoreEndPoint;
@@ -22,7 +24,6 @@ import com.cloud.storage.StoragePoolVO;
 import com.cloud.storage.Storage.StoragePoolType;
 import com.cloud.storage.dao.StoragePoolDao;
 import com.cloud.storage.dao.StoragePoolHostDao;
-import com.cloud.utils.component.Inject;
 import com.cloud.utils.exception.CloudRuntimeException;
 
 public class DefaultPrimaryDataStoreLifeCycle implements DataStoreLifeCycle {

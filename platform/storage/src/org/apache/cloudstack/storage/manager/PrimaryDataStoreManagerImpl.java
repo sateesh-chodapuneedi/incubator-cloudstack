@@ -22,6 +22,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
+
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore.StoreType;
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStoreLifeCycle;
@@ -39,11 +41,10 @@ import com.cloud.storage.StoragePoolStatus;
 import com.cloud.storage.StoragePoolVO;
 import com.cloud.storage.dao.StoragePoolDao;
 import com.cloud.utils.component.Adapters;
-import com.cloud.utils.component.Inject;
 import com.cloud.utils.exception.CloudRuntimeException;
 
 public class PrimaryDataStoreManagerImpl implements PrimaryDataStoreManager {
-	@Inject(adapter = StorageProvider.class)
+	@com.cloud.utils.component.Inject(adapter = StorageProvider.class)
 	protected Adapters<StorageProvider> _storageProviders;
 	@Inject
 	protected DataCenterDao _dcDao;

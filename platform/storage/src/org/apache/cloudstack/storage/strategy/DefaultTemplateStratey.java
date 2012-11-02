@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStoreDriver;
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStoreEndPoint;
@@ -43,7 +45,6 @@ import com.cloud.storage.VMTemplateStorageResourceAssoc;
 import com.cloud.storage.VMTemplateStorageResourceAssoc.Status;
 import com.cloud.storage.dao.VMTemplateHostDao;
 import com.cloud.storage.dao.VMTemplatePoolDao;
-import com.cloud.utils.component.Inject;
 import com.cloud.utils.exception.CloudRuntimeException;
 
 public class DefaultTemplateStratey implements TemplateStrategy {

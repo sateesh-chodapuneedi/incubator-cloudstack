@@ -18,12 +18,13 @@
  */
 package org.apache.cloudstack.storage.volume;
 
+import javax.inject.Inject;
+
 import org.apache.cloudstack.platform.subsystem.api.storage.VolumeProfile;
 
 import com.cloud.storage.VolumeVO;
 import com.cloud.storage.Volume;
 import com.cloud.storage.dao.VolumeDao;
-import com.cloud.utils.component.Inject;
 import com.cloud.utils.fsm.NoTransitionException;
 import com.cloud.utils.fsm.StateMachine2;
 

@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.inject.Inject;
 import javax.naming.ConfigurationException;
 
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore;
@@ -29,7 +30,6 @@ import com.cloud.storage.StoragePool;
 import com.cloud.storage.StoragePoolStatus;
 import com.cloud.storage.StoragePoolVO;
 import com.cloud.storage.dao.StoragePoolDao;
-import com.cloud.utils.component.Inject;
 
 public class DefaultPrimaryStorageProvider implements StorageProvider {
 	private String _name = DefaultPrimaryStorageProvider.class.toString();

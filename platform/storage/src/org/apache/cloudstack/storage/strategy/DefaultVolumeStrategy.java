@@ -2,6 +2,8 @@ package org.apache.cloudstack.storage.strategy;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStoreDriver;
 
@@ -19,7 +21,6 @@ import org.apache.log4j.Logger;
 
 import com.cloud.storage.Volume;
 import com.cloud.storage.VolumeVO;
-import com.cloud.utils.component.Inject;
 
 
 public class DefaultVolumeStrategy implements VolumeStrategy {

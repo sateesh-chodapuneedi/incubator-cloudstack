@@ -20,6 +20,8 @@ package org.apache.cloudstack.storage.image;
 
 import java.util.List;
 
+import javax.inject.Inject;
+
 import org.apache.cloudstack.platform.subsystem.api.storage.DataStore;
 import org.apache.cloudstack.platform.subsystem.api.storage.TemplateProfile;
 import org.apache.log4j.Logger;
@@ -37,7 +39,6 @@ import com.cloud.storage.dao.VMTemplateDao;
 import com.cloud.storage.dao.VMTemplatePoolDao;
 import com.cloud.template.VirtualMachineTemplate;
 import com.cloud.utils.EnumUtils;
-import com.cloud.utils.component.Inject;
 import com.cloud.utils.exception.CloudRuntimeException;
 
 public class ImageManagerImpl implements ImageManager {
