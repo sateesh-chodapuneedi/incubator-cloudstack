@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+/usr/bin/cloud-setup-management
 /usr/bin/cloud-setup-databases
 /usr/bin/cloud-migrate-databases
 /usr/bin/cloud-set-guest-password

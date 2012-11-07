@@ -43,6 +43,12 @@
       <artifactId>libvirt</artifactId>
       <version>0.4.9</version>
     </dependency>
+    <dependency>
+      <groupId>com.sun.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>3.0.9</version>
+      <scope>runtime</scope>
+    </dependency>
   </dependencies>
   <build>
       <defaultGoal>install</defaultGoal>
@@ -50,47 +56,64 @@
       <testSourceDirectory>test</testSourceDirectory>
        <plugins>
         <plugin>
-          <artifactId>maven-assembly-plugin</artifactId>
-          <version>2.3</version>
-          <configuration>
-            <finalName>kvm-agent</finalName>
-            <appendAssemblyId>false</appendAssemblyId>
-            <descriptors>
-              <descriptor>agent-descriptor.xml</descriptor>
-            </descriptors>
-          </configuration>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-dependency-plugin</artifactId>
           <executions>
             <execution>
-              <id>make-agent</id>
-              <phase>package</phase>
+              <id>copy-dependencies</id>
+              <phase>prepare-package</phase>
               <goals>
-                <goal>single</goal>
+                <goal>copy-dependencies</goal>
               </goals>
+              <configuration>
+                <outputDirectory>${project.build.directory}/lib</outputDirectory>
+                <overWriteReleases>false</overWriteReleases>
+                <overWriteSnapshots>false</overWriteSnapshots>
+                <overWriteIfNewer>true</overWriteIfNewer>
+              </configuration>
             </execution>
           </executions>
         </plugin>
         <plugin>
-          <artifactId>maven-resources-plugin</artifactId>
-          <version>2.6</version>
-          <executions>
-            <execution>
-              <id>copy-resources</id>
-              <!-- here the phase you need -->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <configuration>
+            <archive>
+              <manifest>
+                <addClasspath>true</addClasspath>
+                <classpathPrefix>lib/</classpathPrefix>
+              </manifest>
+            </archive>
+          </configuration>
+        </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+         <configuration>
+          <filters>
+            <filter>
+              <artifact>*:*</artifact>
+              <excludes>
+                <exclude>META-INF/*.SF</exclude>
+                <exclude>META-INF/*.DSA</exclude>
+                <exclude>META-INF/*.RSA</exclude>
+              </excludes>
+            </filter>
+          </filters>
+        </configuration>
+        <executions>
+          <execution>
             <phase>package</phase>
             <goals>
-              <goal>copy-resources</goal>
+              <goal>shade</goal>
             </goals>
             <configuration>
-              <outputDirectory>dist</outputDirectory>
-              <resources>          
-                <resource>
-                  <directory>target</directory>
-                  <includes>
-                    <include>kvm-agent.zip</include>
-                  </includes>
-                </resource>
-              </resources>              
-            </configuration>            
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>com.cloud.agent.AgentShell</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
           </execution>
         </executions>
       </plugin>

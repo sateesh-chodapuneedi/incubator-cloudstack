@@ -23,11 +23,8 @@ configure-stamp:
 	echo VERSION=$VERSION >> build/replace.properties
 	touch configure-stamp
 
-build: build-arch
-
-build-arch: build-arch-stamp
-build-arch-stamp: configure-stamp  
-	mvn package -Dsystemvm
+build:
+	mvn package -DskipTests -Dsystemvm
 	touch $@
 
 clean: 
@@ -40,34 +37,87 @@ install:
 	dh_testdir
 	dh_testroot
 	dh_prep -s
-	mkdir -p debian/tmp/usr/bin
-	mkdir -p debian/tmp/usr/share/cloud/management
-	mkdir -p debian/tmp/var/log/cloud
-	mkdir debian/tmp/var/log/cloud/managament
-	mkdir debian/tmp/var/log/cloud/awsapi
-	mkdir debian/tmp/var/log/cloud/agent
-	mkdir debian/tmp/var/log/cloud/ipallocator
-	mkdir debian/tmp/var/log/cloud/usage
+
+	# Common packages
 	mkdir -p debian/tmp/etc/cloud
+	mkdir -p debian/tmp/etc/init.d
+	mkdir -p debian/tmp/var/cache/cloud
+	mkdir -p debian/tmp/var/log/cloud
+	mkdir -p debian/tmp/var/lib/cloud
+	mkdir -p debian/tmp/usr/bin
+	mkdir -p debian/tmp/usr/share/cloud
+	mkdir -p debian/tmp/usr/share/java
+	mkdir -p debian/tmp/usr/lib/cloud
+
+	# cloud-agent-kvm
 	mkdir debian/tmp/etc/cloud/agent
+	mkdir debian/tmp/var/log/cloud/agent
+	install -D plugins/hypervisors/kvm/target/cloud-plugin-hypervisor-kvm-4.1.0-SNAPSHOT.jar debian/tmp/usr/share/java/cloud-agent-kvm.jar
+	install -D packaging/debian/init/cloud-agent debian/tmp/etc/init.d/
+	install -D agent/bindir/cloud-setup-agent.in debian/tmp/usr/bin/cloud-setup-agent
+	install -D agent/bindir/cloud-ssh.in debian/tmp/usr/bin/cloud-ssh
+	cp conf/target/conf/agent/* debian/tmp/etc/cloud/agent
+
+	# cloud-server
 	mkdir debian/tmp/etc/cloud/server
 	mkdir debian/tmp/etc/cloud/management
-	mkdir debian/tmp/etc/cloud/usage
-	mkdir -p debian/tmp/var/cache/cloud
-	mkdir debian/tmp/var/cache/cloud/management
-	mkdir -p debian/tmp/usr/share/cloud
-	mkdir debian/tmp/usr/share/cloud/setup
 	mkdir -p debian/tmp/usr/share/cloud/management/webapps/client
-	
+	mkdir debian/tmp/var/log/cloud/management
+	mkdir debian/tmp/var/cache/cloud/management
+	mkdir debian/tmp/var/cache/cloud/management/work
+	mkdir debian/tmp/var/cache/cloud/management/temp
+	mkdir debian/tmp/var/log/cloud/ipallocator
+	mkdir debian/tmp/var/lib/cloud/management
+	mkdir debian/tmp/var/lib/cloud/mnt
+	mkdir debian/tmp/usr/share/cloud/setup
 	cp -r client/target/utilities/scripts/db/* debian/tmp/usr/share/cloud/setup/
 	cp -r client/target/cloud-client-ui-4.1.0-SNAPSHOT/* debian/tmp/usr/share/cloud/management/webapps/client/
+	cp conf/target/conf/server/* debian/tmp/etc/cloud/server/
+	cp conf/target/conf/client/* debian/tmp/etc/cloud/management/
+	ln -s tomcat6-nonssl.conf debian/tmp/etc/cloud/management/tomcat6.conf
+	mkdir -p debian/tmp/etc/cloud/management/Catalina/localhost/client
+	cp packaging/debian/init/cloud-management debian/tmp/etc/init.d/
+	cp client/bindir/cloud-update-xenserver-licenses.in debian/tmp/usr/bin/cloud-update-xenserver-licenses
+
+	# cloud-scripts
+	mkdir -p debian/tmp/usr/lib/cloud/common/scripts
+	cp -r scripts/installer debian/tmp/usr/lib/cloud/common/scripts
+	cp -r scripts/network debian/tmp/usr/lib/cloud/common/scripts
+	cp -r scripts/storage debian/tmp/usr/lib/cloud/common/scripts
+	cp -r scripts/util debian/tmp/usr/lib/cloud/common/scripts
+	cp -r scripts/vm debian/tmp/usr/lib/cloud/common/scripts
+
+	# cloud-setup
+	cp client/bindir/cloud-setup-management.in debian/tmp/usr/bin/cloud-setup-management
+	cp setup/bindir/cloud-set-guest-password.in debian/tmp/usr/bin/cloud-set-guest-password
+	cp setup/bindir/cloud-setup-databases.in debian/tmp/usr/bin/cloud-setup-databases
+	cp setup/bindir/cloud-migrate-databases.in debian/tmp/usr/bin/cloud-migrate-databases
+	cp setup/bindir/cloud-set-guest-sshkey.in debian/tmp/usr/bin/cloud-set-guest-sshkey
+
+	# cloud-python
+	mkdir -p debian/tmp/usr/lib/python2.7/dist-packages
+	cp -r python/lib/cloud* debian/tmp/usr/lib/python2.7/dist-packages/
+
+	# cloud-system-iso
+	mkdir -p debian/tmp/usr/lib/cloud/common/vms
+	cp console-proxy/dist/systemvm.iso debian/tmp/usr/lib/cloud/common/vms/
+
+	# cloud-usage
+	mkdir debian/tmp/etc/cloud/usage
+	mkdir debian/tmp/var/log/cloud/usage
+	cp usage/target/cloud-usage-4.1.0-SNAPSHOT.jar debian/tmp/usr/share/java/cloud-usage.jar
+	cp conf/target/conf/usage/* debian/tmp/etc/cloud/usage/
+	ln -s ../management/db.properties debian/tmp/etc/cloud/usage/db.properties
+	cp packaging/debian/init/cloud-usage debian/tmp/etc/init.d
+
+	# cloud-awsapi
+	mkdir debian/tmp/var/log/cloud/awsapi
+
 	dh_installdirs -s
 	dh_install -s
 
-binary: binary-common
-binary-common:
-	dh_testdir
-	dh_testroot
+binary: install
+	dh_install
 	dh_installchangelogs
 	dh_installdocs LICENSE
 	dh_installdocs DISCLAIMER

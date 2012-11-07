@@ -16,10 +16,10 @@
 # under the License.
 
 /etc/cloud/agent/agent.properties
-/etc/cloud/agent/developer.properties.template
 /etc/cloud/agent/environment.properties
 /etc/cloud/agent/log4j-cloud.xml
 /etc/init.d/cloud-agent
 /usr/bin/cloud-setup-agent
 /usr/bin/cloud-ssh
 /var/log/cloud/agent
+/usr/share/java/cloud-agent-kvm.jar

@@ -150,6 +150,7 @@
     <module>agent</module>
     <module>console-proxy</module>
     <module>core</module>
+    <module>conf</module>
     <module>server</module>
     <module>usage</module>
     <module>utils</module>

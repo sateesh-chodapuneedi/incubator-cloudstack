@@ -15,5 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-/usr/share/cloud/management/webapps/client/*
+# management server compile-time environment parameters
 
+paths.script=@COMMONLIBDIR@
+mount.parent=@MSMNTDIR@
+cloud-stack-components-specification=@COMPONENTS-SPEC@
