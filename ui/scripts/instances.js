@@ -47,7 +47,15 @@
 				instancename: { label: 'label.internal.name' },
         zonename: { label: 'label.zone.name' },
         state: {
-          label: 'label.state',         
+          label: 'label.state',
+          converter: function(data) {
+            if(data == 'StoppedSnapshotting' || data == 'RunningSnapshotting')
+              return  'Snapshotting';
+            if(data == 'RevertingToRunning' || data == 'RevertingToStopped'){
+              return 'Reverting';
+            } 
+            return data;
+          },          
           indicator: {
             'Running': 'on',
             'Stopped': 'off',
@@ -205,6 +213,7 @@
             poll: pollAsyncJobResult
           }
         },
+
         destroy: {
           label: 'label.action.destroy.instance',
           messages: {
@@ -317,7 +326,7 @@
 
       detailView: {
         name: 'Instance details',
-        viewAll: { path: 'storage.volumes', label: 'label.volumes' },
+        viewAll: [{ path: 'storage.volumes', label: 'label.volumes' }, { path: 'vmsnapshots', label: 'VM Snapshots' } ],
         tabFilter: function(args) {
           var hiddenTabs = [];
           var zoneNetworktype;
@@ -485,6 +494,70 @@
               poll: pollAsyncJobResult
             }
           },
+
+          snapshot: {
+            messages: {
+              notification: function(args) {
+                return 'label.action.vmsnapshot.create';
+              }
+            },
+            label: 'label.action.vmsnapshot.create',
+            addRow: 'false',
+            createForm: {
+              title: 'label.action.vmsnapshot.create',
+              fields: {
+                name: {
+                  label: 'label.name',
+                  isInput: true
+                },
+                description: {
+                  label: 'label.description',
+                  isTextarea: true
+                },
+                snapshotMemory: {
+                  label: 'label.vmsnapshot.memory',
+                  isBoolean: true,
+                  isChecked: false
+                }
+              }
+            },
+            action: function(args) {
+              var array1 = [];
+              array1.push("&snapshotmemory=" + (args.data.snapshotMemory == "on"));
+              var displayname = args.data.name;
+              if (displayname != null && displayname.length > 0) {
+                array1.push("&name=" + todb(displayname));
+              }
+              var description = args.data.description;
+              if (description != null && description.length > 0) {
+                array1.push("&description=" + todb(description));
+              }
+              $.ajax({
+                url: createURL("createVMSnapshot&vmId=" + args.context.instances[0].id + array1.join("")),
+                dataType: "json",
+                async: true,
+                success: function(json) {
+                  var jid = json.createvmsnapshotresponse.jobid;
+                  args.response.success({
+                    _custom: {
+                      jobId: jid,
+                      getUpdatedItem: function(json) {
+                        return json.queryasyncjobresultresponse.jobresult.virtualmachine;
+                      },
+                      getActionFilter: function() {
+                        return vmActionfilter;
+                      }
+                    }
+                  });
+                }
+              });
+          
+            },
+            notification: {
+              pool: pollAsyncJobResult
+            }
+          },          
+
           destroy: {
             label: 'label.action.destroy.instance',
             messages: {
@@ -1279,6 +1352,7 @@
     else if (jsonObj.state == 'Running') {     
       allowedActions.push("stop");
       allowedActions.push("restart");
+      allowedActions.push("snapshot");
       allowedActions.push("destroy");
       allowedActions.push("changeService");
 
@@ -1302,7 +1376,7 @@
       allowedActions.push("edit");
       allowedActions.push("start");
       allowedActions.push("destroy");
-
+      allowedActions.push("snapshot");
       if(isAdmin())
         allowedActions.push("migrateToAnotherStorage");
 

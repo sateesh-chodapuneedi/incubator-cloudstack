@@ -25,9 +25,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -44,7 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
+import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
@@ -82,12 +80,16 @@ import com.cloud.agent.api.Command;
 import com.cloud.agent.api.CreatePrivateTemplateFromSnapshotCommand;
 import com.cloud.agent.api.CreatePrivateTemplateFromVolumeCommand;
 import com.cloud.agent.api.CreateStoragePoolCommand;
+import com.cloud.agent.api.CreateVMSnapshotAnswer;
+import com.cloud.agent.api.CreateVMSnapshotCommand;
 import com.cloud.agent.api.CreateVolumeFromSnapshotAnswer;
 import com.cloud.agent.api.CreateVolumeFromSnapshotCommand;
 import com.cloud.agent.api.DeleteSnapshotBackupAnswer;
 import com.cloud.agent.api.DeleteSnapshotBackupCommand;
 import com.cloud.agent.api.DeleteSnapshotsDirCommand;
 import com.cloud.agent.api.DeleteStoragePoolCommand;
+import com.cloud.agent.api.DeleteVMSnapshotAnswer;
+import com.cloud.agent.api.DeleteVMSnapshotCommand;
 import com.cloud.agent.api.FenceAnswer;
 import com.cloud.agent.api.FenceCommand;
 import com.cloud.agent.api.GetHostStatsAnswer;
@@ -124,6 +126,8 @@ import com.cloud.agent.api.ReadyCommand;
 import com.cloud.agent.api.RebootAnswer;
 import com.cloud.agent.api.RebootCommand;
 import com.cloud.agent.api.RebootRouterCommand;
+import com.cloud.agent.api.RevertToVMSnapshotAnswer;
+import com.cloud.agent.api.RevertToVMSnapshotCommand;
 import com.cloud.agent.api.SecurityGroupRuleAnswer;
 import com.cloud.agent.api.SecurityGroupRulesCmd;
 import com.cloud.agent.api.SetupGuestNetworkAnswer;
@@ -138,6 +142,7 @@ import com.cloud.agent.api.StopCommand;
 import com.cloud.agent.api.UnPlugNicAnswer;
 import com.cloud.agent.api.UnPlugNicCommand;
 import com.cloud.agent.api.UpgradeSnapshotCommand;
+import com.cloud.agent.api.VMSnapshotTO;
 import com.cloud.agent.api.VmStatsEntry;
 import com.cloud.agent.api.check.CheckSshAnswer;
 import com.cloud.agent.api.check.CheckSshCommand;
@@ -165,11 +170,18 @@ import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.StorageFilerTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.api.to.VolumeTO;
+import com.cloud.agent.resource.virtualnetwork.VirtualRoutingResource;
+import com.cloud.dc.Vlan;
+import com.cloud.exception.InternalErrorException;
+import com.cloud.host.Host.Type;
+import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.kvm.resource.KVMHABase.NfsStoragePool;
+import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.ClockDef;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.ConsoleDef;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.CpuTuneDef;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.DevicesDef;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.DiskDef;
+import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.DiskDef.diskBus;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.DiskDef.diskProtocol;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.FeaturesDef;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.GraphicDef;
@@ -180,16 +192,10 @@ import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.InterfaceDef;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.InterfaceDef.hostNicType;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.SerialDef;
 import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.TermPolicy;
-import com.cloud.hypervisor.kvm.resource.LibvirtVMDef.ClockDef;
-import com.cloud.agent.resource.virtualnetwork.VirtualRoutingResource;
 import com.cloud.hypervisor.kvm.storage.KVMPhysicalDisk;
 import com.cloud.hypervisor.kvm.storage.KVMPhysicalDisk.PhysicalDiskFormat;
 import com.cloud.hypervisor.kvm.storage.KVMStoragePool;
 import com.cloud.hypervisor.kvm.storage.KVMStoragePoolManager;
-import com.cloud.dc.Vlan;
-import com.cloud.exception.InternalErrorException;
-import com.cloud.host.Host.Type;
-import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.network.Networks.BroadcastDomainType;
 import com.cloud.network.Networks.IsolationType;
 import com.cloud.network.Networks.RouterPrivateIpStrategy;
@@ -218,8 +224,8 @@ import com.cloud.utils.script.Script;
 import com.cloud.vm.DiskProfile;
 import com.cloud.vm.VirtualMachine;
 import com.cloud.vm.VirtualMachine.State;
+import com.cloud.vm.snapshot.VMSnapshot;
 import com.cloud.vm.VirtualMachineName;
-
 /**
  * LibvirtComputingResource execute requests on the computing/routing host using
  * the libvirt API
@@ -879,7 +885,8 @@ public class LibvirtComputingResource extends ServerResourceBase implements
             if (failed) {
                 dmOld = conn.domainLookupByUUID(UUID.nameUUIDFromBytes(vmName
                         .getBytes()));
-                dmOld.undefine();
+                // undefine(2) removes any vm snapshots metadata associated with this domain
+                dmOld.undefineFlags(2);
                 dmNew = conn.domainDefineXML(domainXML);
             }
         } catch (final LibvirtException e) {
@@ -1061,7 +1068,14 @@ public class LibvirtComputingResource extends ServerResourceBase implements
                 return execute((CopyVolumeCommand) cmd);
             } else if (cmd instanceof CheckNetworkCommand) {
                 return execute((CheckNetworkCommand) cmd);
-            } else {
+            }else if (cmd instanceof DeleteVMSnapshotCommand){
+                return execute((DeleteVMSnapshotCommand)cmd);
+            }else if (cmd instanceof RevertToVMSnapshotCommand){
+            	return execute((RevertToVMSnapshotCommand)cmd);
+            }else if (cmd instanceof CreateVMSnapshotCommand){
+            	return execute((CreateVMSnapshotCommand)cmd);
+            }
+            else {
                 s_logger.warn("Unsupported command ");
                 return Answer.createUnsupportedCommandAnswer(cmd);
             }
@@ -1069,7 +1083,229 @@ public class LibvirtComputingResource extends ServerResourceBase implements
             return new Answer(cmd, false, e.getMessage());
         }
     }
+    
+    private Answer execute(DeleteVMSnapshotCommand cmd) {
+        VMSnapshotTO target = cmd.getTarget();
+        String vmName = cmd.getVmName();
+        Domain dm = null;
+        try{
+            Connect conn = LibvirtConnection.getConnection();
+            try{
+                dm = getDomain(conn,vmName);
+            }catch (Exception e) {
+                s_logger.debug("Cannot find domain:" + vmName + ", create a working VM for VM snapshot.");
+            }
+            // create a work VM with volumes path info if domain does not exist
+            if(dm == null){
+                dm = createWorkVM(vmName,cmd.getGuestOSType(),cmd.getVolumeTOs(),conn);
+            }
+                
+            DomainSnapshot snapshot = null;
+            try{
+                snapshot = dm.snapshotLookupByName(target.getSnapshotName());
+            }catch (Exception e) {
+                s_logger.debug("Can not find snapshot " + target.getSnapshotName() 
+                         +" for VM: " + vmName +", redefine it on the fly");
+            }
+            // redefine VM snapshot's meta data if it does not exist on the agent
+            if(snapshot == null){
+                snapshot = redefineSnapshot(conn,target,dm);
+            }
+            int ret = snapshot.delete(0);
+            if(ret == 0){
+                return new DeleteVMSnapshotAnswer(cmd,cmd.getVolumeTOs());
+            }
+            
+        }catch (Exception e) {
+            return new DeleteVMSnapshotAnswer(cmd,false,e.getMessage());
+        }
+        return new DeleteVMSnapshotAnswer(cmd,false,"Failed to delete snapshot " + cmd.getTarget().getSnapshotName());
+    
+    }
 
+    private Domain createWorkVM(String vmName, String osType, List<VolumeTO> volumeTOs, Connect conn) throws LibvirtException {
+        VirtualMachineTO vmTO = new VirtualMachineTO(0, vmName, com.cloud.vm.VirtualMachine.Type.User, 1, 100, 128, 128, null, osType, false, false, null);
+        LibvirtVMDef vm = createVMFromSpec(vmTO);
+        for (VolumeTO volume : volumeTOs) {
+            DiskDef disk = new DiskDef();
+            KVMStoragePool pool = _storagePoolMgr.getStoragePool(volume.getPoolUuid());
+            KVMPhysicalDisk physicalDisk = pool.getPhysicalDisk(volume.getPath());
+            disk.defFileBasedDisk(physicalDisk.getPath(), new Long(volume.getDeviceId()).intValue(), diskBus.VIRTIO, DiskDef.diskFmtType.QCOW2);
+            vm.getDevices().addDevice(disk);
+        }
+        return conn.domainDefineXML(vm.toString());
+        
+    }
+    
+    
+    
+    private Answer execute(CreateVMSnapshotCommand cmd) {
+        MessageFormat snapshotDef = new MessageFormat("<domainsnapshot><name>{0}</name><memory snapshot=\"{1}\"/> </domainsnapshot>");
+        String errorMsg = "";
+        VMSnapshotTO target = cmd.getTarget();
+        String vmName = cmd.getVmName();
+        Domain dm = null;
+        try{
+            Connect conn = LibvirtConnection.getConnection();
+            try{
+                dm = conn.domainLookupByUUID(UUID.nameUUIDFromBytes(vmName.getBytes()));
+            }catch (Exception e) {
+                s_logger.debug("Cannot find domain:" + vmName + ", create a working VM for VM snapshot.");
+            }
+            
+            // if snapshot already exists, return it
+            if(dm != null){
+                DomainSnapshot existingSnapshot = null;
+                try{
+                    existingSnapshot = dm.snapshotLookupByName(cmd.getTarget().getSnapshotName());
+                }catch (Exception e) {
+                }
+                if(existingSnapshot != null){
+                    s_logger.debug("VM snapshot:" + cmd.getTarget().getSnapshotName() +" already exists");
+                    return new CreateVMSnapshotAnswer(cmd,target,cmd.getVolumeTOs());
+                }
+            }
+            
+            // if domain does not exist, define it as a work vm
+            if(dm == null){
+                dm = createWorkVM(vmName,cmd.getGuestOSType(),cmd.getVolumeTOs(),conn);
+            }
+            DomainInfo.DomainState ps = dm.getInfo().state;
+            State state = convertToState(ps);
+            if((cmd.getVmState() == State.Running || cmd.getVmState() == State.RunningSnapshotting) &&  state != State.Running){
+                errorMsg = "Cannot create VM snapshot " + cmd.getTarget().getSnapshotName() + 
+                        " expected VM state: running/runningSnapshoting, actual state: " + state + ", for VM " + vmName;
+                s_logger.error(errorMsg);
+                return new CreateVMSnapshotAnswer(cmd, false, errorMsg);
+            }
+            
+            if((cmd.getVmState() == State.Stopped || cmd.getVmState() == State.StoppedSnapshotting) &&  state != State.Stopped){
+                errorMsg = "Cannot create VM snapshot " + cmd.getTarget().getSnapshotName() + 
+                        " expected VM state: stopped/stoppedSnapshoting, actual state: " + state + ", for VM " + vmName;
+                s_logger.error(errorMsg);
+                return new CreateVMSnapshotAnswer(cmd, false, errorMsg);
+            }
+           
+            if(cmd.getTarget().getParent() != null && cmd.getTarget().getParent().getSnapshotName() != null){ 
+                redefineSnapshot(conn, cmd.getTarget().getParent(), dm); // redefine current snapshot and its parents
+            }
+            DomainSnapshot snapshot = dm.snapshotCreateXML(snapshotDef.format(new Object[] { target.getSnapshotName(), target.getType() == VMSnapshot.Type.DiskAndMemory?"yes":"no" }));
+            if(snapshot != null)
+                return new CreateVMSnapshotAnswer(cmd,target,cmd.getVolumeTOs());
+        }catch (Exception e) {
+            s_logger.error(e.getMessage());
+            errorMsg = e.getMessage();
+        }
+        
+        return new CreateVMSnapshotAnswer(cmd, false, errorMsg);
+    }
+
+    private Answer execute(RevertToVMSnapshotCommand cmd) {
+        VMSnapshotTO target = cmd.getTarget();
+        String vmName = cmd.getVmName();
+        boolean memorySnapshot = cmd.getTarget().getType() == VMSnapshot.Type.DiskAndMemory;
+        Domain dm = null;
+        try{
+            Connect conn = LibvirtConnection.getConnection();
+            // get domain
+            try{
+                dm = getDomain(conn,vmName);
+            }catch (Exception e) {
+                s_logger.debug("Cannot find domain:" + vmName + ", create a working VM for VM snapshot.");
+            }
+            // Wait for the domain gets into running or shutoff state 
+            int retry = 30;
+            if(dm != null){
+                
+                while ((dm.getInfo().state != DomainInfo.DomainState.VIR_DOMAIN_RUNNING 
+                        || dm.getInfo().state != DomainInfo.DomainState.VIR_DOMAIN_SHUTOFF
+                        || dm.getInfo().state != DomainInfo.DomainState.VIR_DOMAIN_SHUTDOWN )
+                        && (retry >= 0)) {
+                    Thread.sleep(2000);
+                    retry--;
+                }
+            }
+            // define a work VM if domain is nll
+            if(dm == null){
+            	if(memorySnapshot)
+            		return new RevertToVMSnapshotAnswer(cmd,false,
+            				"Cannot revert to VM snapshot, expected VM state: running, actual state: stopped, for VM " + vmName);
+            	else
+            		dm = createWorkVM(vmName,cmd.getGuestOSType(),cmd.getVolumeTOs(),conn);
+            }
+            // check if snapshot exists    
+            DomainSnapshot snapshot = null;
+            try{
+                snapshot = dm.snapshotLookupByName(target.getSnapshotName());
+            }catch (Exception e) {
+                s_logger.debug("Can not find snapshot " + target.getSnapshotName() 
+                		+ " for VM: " + vmName +", redefine it on the fly");
+            }
+            // redefine snapshot if it does not exist on agent
+            if(snapshot == null){
+                snapshot = redefineSnapshot(conn,target,dm);
+            }
+            int ret = dm.revertToSnapshot(snapshot);
+            if(ret == 0){
+                DomainInfo.DomainState state = null;
+                dm = getDomain(conn, cmd.getVmName());
+                state = dm.getInfo().state;
+                State vmState = convertToState(state);
+                if(vmState == State.Running && memorySnapshot || vmState == State.Stopped && !memorySnapshot )
+                	return new RevertToVMSnapshotAnswer(cmd,cmd.getVolumeTOs(),vmState);
+            }
+            
+        }catch (Exception e) {
+        	return new RevertToVMSnapshotAnswer(cmd,false,e.getMessage());
+        }
+        return new RevertToVMSnapshotAnswer(cmd,false,"Internal error, failed to revert to snapshot");
+    }
+    
+    private DomainSnapshot redefineSnapshot(Connect conn, VMSnapshotTO vmSnapshotTo,Domain dm) throws LibvirtException {
+        String targetName = vmSnapshotTo.getSnapshotName();
+        MessageFormat parentDef = new MessageFormat("<parent><name>{0}</name></parent>");
+        MessageFormat def = new MessageFormat("<domainsnapshot><name>{0}</name><state>{1}</state><creationTime>{2}</creationTime>");
+        String defEnd ="</domainsnapshot>";
+        VMSnapshotTO snapshotTO = null;
+        // Pair<snapshotDef, isCurrent>
+        Stack<Pair<String,Boolean>> SnapshotDefs = new Stack<Pair<String,Boolean>>();
+        do{
+            snapshotTO = (snapshotTO == null ? vmSnapshotTo : snapshotTO.getParent());
+            String snapshotName = snapshotTO.getSnapshotName();
+            
+            String snapshotState = snapshotTO.getType() == VMSnapshot.Type.DiskAndMemory?"running":"shutoff";
+            
+            DomainInfo.DomainState ps = dm.getInfo().state;
+            State dmState = convertToState(ps);
+           
+            // libvirt does not allow to re-define a running state snapshot as current on a stopped VM
+            if(dmState == State.Stopped && snapshotTO.getType() == VMSnapshot.Type.DiskAndMemory && snapshotTO.getCurrent())
+                snapshotState = "shutdown";
+            
+            Long creationTime = snapshotTO.getCreateTime();
+            Object[] args = new Object[] { snapshotName, snapshotState, creationTime/1000 + "" };
+            String snapshotDef = def.format(args);
+            if(snapshotTO.getParent()!=null){
+                String parentUUID = snapshotTO.getParent().getSnapshotName();
+                snapshotDef = snapshotDef + parentDef.format(new Object[] {parentUUID});
+            }
+            String domainDef = dm.getXMLDesc(0);
+            Pair<String,Boolean> pair = new Pair<String, Boolean>(snapshotDef + domainDef + defEnd, snapshotTO.getCurrent());
+            SnapshotDefs.push(pair);
+        }while(snapshotTO.getParent() != null);
+       
+        while(!SnapshotDefs.isEmpty()){
+            Pair<String,Boolean> snapshotDef = SnapshotDefs.pop();
+            
+            if(snapshotDef.second())
+                dm.snapshotCreateXML(snapshotDef.first(),3);
+            else
+                dm.snapshotCreateXML(snapshotDef.first(),1);
+        }
+        
+        return dm.snapshotLookupByName(targetName);
+    }
+    
     private CheckNetworkAnswer execute(CheckNetworkCommand cmd) {
         List<PhysicalNetworkSetupInfo> phyNics = cmd
                 .getPhysicalNetworkInfoList();
@@ -3704,7 +3940,8 @@ public class LibvirtComputingResource extends ServerResourceBase implements
             try {
                 dm = conn.domainLookupByUUID(UUID.nameUUIDFromBytes(vmName
                         .getBytes()));
-                dm.undefine();
+                // undefineFlags(2) removes any vm snapshots metadata associated with this domain
+                dm.undefineFlags(2);
             } catch (LibvirtException e) {
 
             } finally {

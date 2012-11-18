@@ -62,17 +62,17 @@ import com.cloud.network.NetworkManager;
 import com.cloud.network.NetworkProfile;
 import com.cloud.network.NetworkRuleConfigVO;
 import com.cloud.network.NetworkVO;
-import com.cloud.network.Site2SiteVpnGatewayVO;
-import com.cloud.network.Site2SiteCustomerGatewayVO;
 import com.cloud.network.Networks.TrafficType;
+import com.cloud.network.Site2SiteCustomerGatewayVO;
+import com.cloud.network.Site2SiteVpnGatewayVO;
 import com.cloud.network.dao.FirewallRulesCidrsDao;
 import com.cloud.network.dao.IPAddressDao;
 import com.cloud.network.dao.LoadBalancerDao;
 import com.cloud.network.dao.NetworkDao;
 import com.cloud.network.dao.NetworkDomainDao;
 import com.cloud.network.dao.NetworkRuleConfigDao;
-import com.cloud.network.dao.Site2SiteVpnGatewayDao;
 import com.cloud.network.dao.Site2SiteCustomerGatewayDao;
+import com.cloud.network.dao.Site2SiteVpnGatewayDao;
 import com.cloud.network.security.SecurityGroup;
 import com.cloud.network.security.SecurityGroupManager;
 import com.cloud.network.security.SecurityGroupVO;
@@ -153,6 +153,8 @@ import com.cloud.vm.dao.UserVmDao;
 import com.cloud.vm.dao.UserVmData;
 import com.cloud.vm.dao.UserVmDetailsDao;
 import com.cloud.vm.dao.VMInstanceDao;
+import com.cloud.vm.snapshot.VMSnapshot;
+import com.cloud.vm.snapshot.dao.VMSnapshotDao;
 
 public class ApiDBUtils {
     private static ManagementServer _ms;
@@ -213,6 +215,7 @@ public class ApiDBUtils {
     private static UserVmDetailsDao _userVmDetailsDao;
     private static SSHKeyPairDao _sshKeyPairDao;
 
+    private static VMSnapshotDao _vmSnapshotDao;
     static {
         _ms = (ManagementServer) ComponentLocator.getComponent(ManagementServer.Name);
          ComponentLocator locator = ComponentLocator.getLocator(ManagementServer.Name);
@@ -271,7 +274,7 @@ public class ApiDBUtils {
         _taggedResourceService = locator.getManager(TaggedResourceService.class);
         _sshKeyPairDao = locator.getDao(SSHKeyPairDao.class);
         _userVmDetailsDao = locator.getDao(UserVmDetailsDao.class);
-
+        _vmSnapshotDao = locator.getDao(VMSnapshotDao.class);
         // Note: stats collector should already have been initialized by this time, otherwise a null instance is returned
         _statsCollector = StatsCollector.getInstance();
     }
@@ -802,7 +805,12 @@ public class ApiDBUtils {
     public static boolean canUseForDeploy(Network network) {
         return _networkMgr.canUseForDeploy(network);
     }
-    
+
+    public static VMSnapshot getVMSnapshotById(Long vmSnapshotId) {
+        VMSnapshot vmSnapshot = _vmSnapshotDao.findById(vmSnapshotId);
+        return vmSnapshot;
+    }
+
     public static String getUuid(String resourceId, TaggedResourceType resourceType) {
         return _taggedResourceService.getUuid(resourceId, resourceType);
     }
