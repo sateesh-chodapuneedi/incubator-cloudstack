@@ -2379,7 +2379,7 @@ CREATE TABLE `cloud`.`vm_snapshots` (
   `vm_id` bigint(20) unsigned NOT NULL,
   `account_id` bigint(20) unsigned NOT NULL,
   `domain_id` bigint(20) unsigned NOT NULL,
-  `vm_snapshot_type ` varchar(32) default NULL,
+  `vm_snapshot_type` varchar(32) default NULL,
   `state` varchar(32) NOT NULL,
   `parent` bigint unsigned default NULL,
   `current` int(1) unsigned default NULL,
