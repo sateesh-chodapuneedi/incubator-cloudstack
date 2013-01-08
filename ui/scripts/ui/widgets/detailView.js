@@ -930,9 +930,13 @@
               )
               .appendTo(
                 $('<td>')
-                  .addClass('view-all')
+                  .addClass('view-all multiple')
                   .appendTo($actions.find('tr'))
               );
+
+            $actions.find('td.view-all:first').addClass('first');
+            $actions.find('td.view-all:last').addClass('last');
+            $actions.find('td.detail-actions').addClass('full-length');
           });
         }
       }
