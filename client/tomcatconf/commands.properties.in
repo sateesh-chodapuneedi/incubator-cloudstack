@@ -31,7 +31,7 @@ markDefaultZoneForAccount=com.cloud.api.commands.MarkDefaultZoneForAccountCmd;1
 #### User commands
 createUser=com.cloud.api.commands.CreateUserCmd;3
 deleteUser=com.cloud.api.commands.DeleteUserCmd;3
-updateUser=com.cloud.api.commands.UpdateUserCmd;3
+updateUser=com.cloud.api.commands.UpdateUserCmd;15
 listUsers=com.cloud.api.commands.ListUsersCmd;7
 ####lockUser=com.cloud.api.commands.LockUserCmd;7
 disableUser=com.cloud.api.commands.DisableUserCmd;7
@@ -260,7 +260,7 @@ migrateVolume=com.cloud.api.commands.MigrateVolumeCmd;15
 ####                                 use that key...the key is stored in the db associated w/
 ####                                 the userId...every request to the developer API should be
 ####                                 checked against the key
-registerUserKeys=com.cloud.api.commands.RegisterCmd;1
+registerUserKeys=com.cloud.api.commands.RegisterCmd;15
 
 ### async-query command
 queryAsyncJobResult=com.cloud.api.commands.QueryAsyncJobResultCmd;15
@@ -372,11 +372,6 @@ createStorageNetworkIpRange=com.cloud.api.commands.CreateStorageNetworkIpRangeCm
 deleteStorageNetworkIpRange=com.cloud.api.commands.DeleteStorageNetworkIpRangeCmd;1
 listStorageNetworkIpRange=com.cloud.api.commands.listStorageNetworkIpRangeCmd;1
 updateStorageNetworkIpRange=com.cloud.api.commands.UpdateStorageNetworkIpRangeCmd;1
-
-### Network Devices commands
-addNetworkDevice=com.cloud.api.commands.AddNetworkDeviceCmd;1
-listNetworkDevice=com.cloud.api.commands.ListNetworkDeviceCmd;1
-deleteNetworkDevice=com.cloud.api.commands.DeleteNetworkDeviceCmd;1
 
 ### Network Devices commands
 addNetworkDevice=com.cloud.api.commands.AddNetworkDeviceCmd;1

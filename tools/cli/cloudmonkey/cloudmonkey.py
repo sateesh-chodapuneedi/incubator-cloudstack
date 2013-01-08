@@ -26,7 +26,6 @@ try:
     import logging
     import os
     import pdb
-    import sets
     import shlex
     import sys
     import time
@@ -37,6 +36,7 @@ try:
     from urllib2 import HTTPError, URLError
     from httplib import BadStatusLine
 
+    from prettytable import PrettyTable
     from common import __version__, config_file, config_fields
     from common import grammar, precached_verbs
     from marvin.cloudstackConnection import cloudConnection
@@ -65,7 +65,7 @@ logger = logging.getLogger(__name__)
 completions = cloudstackAPI.__all__
 
 
-class CloudStackShell(cmd.Cmd, object):
+class CloudMonkeyShell(cmd.Cmd, object):
     intro = ("☁ Apache CloudStack 🐵 cloudmonkey " + __version__ +
              ". Type help or ? to list commands.\n")
     ruler = "="
@@ -84,6 +84,7 @@ class CloudStackShell(cmd.Cmd, object):
             config = self.write_config()
             print "Welcome! Using `set` configure the necessary settings:"
             print " ".join(sorted(self.config_fields.keys()))
+            print "Config file:", self.config_file
             print "For debugging, tail -f", self.log_file, "\n"
 
         for key in self.config_fields.keys():
@@ -137,7 +138,7 @@ class CloudStackShell(cmd.Cmd, object):
         print self.intro
         while True:
             try:
-                super(CloudStackShell, self).cmdloop(intro = "")
+                super(CloudMonkeyShell, self).cmdloop(intro="")
                 self.postloop()
             except KeyboardInterrupt:
                 print("^C")
@@ -160,11 +161,11 @@ class CloudStackShell(cmd.Cmd, object):
                     elif 'type' in arg:
                         print colored.green(arg),
                     elif 'state' in arg or 'count' in arg:
-                        print colored.yellow(arg),
-                    elif 'id =' in arg:
-                        print colored.cyan(arg),
-                    elif 'name =' in arg:
                         print colored.magenta(arg),
+                    elif 'id =' in arg:
+                        print colored.yellow(arg),
+                    elif 'name =' in arg:
+                        print colored.cyan(arg),
                     else:
                         print arg,
                 else:
@@ -173,29 +174,59 @@ class CloudStackShell(cmd.Cmd, object):
         except Exception, e:
             print colored.red("Error: "), e
 
-    def print_result(self, result):
+    def print_result(self, result, result_filter=None):
         if result is None or len(result) == 0:
             return
 
-        def print_result_as_dict(result):
-            for key in result.keys():
+        def printer_helper(printer, toprow):
+            if printer:
+                print printer
+            return PrettyTable(toprow)
+
+        def print_result_tabular(result, result_filter=None):
+            toprow = None
+            printer = None
+            for node in result:
+                if toprow != node.keys():
+                    if result_filter is not None and len(result_filter) != 0:
+                        commonkeys = filter(lambda x: x in node.keys(),
+                                            result_filter)
+                        if commonkeys != toprow:
+                            toprow = commonkeys
+                            printer = printer_helper(printer, toprow)
+                    else:
+                        toprow = node.keys()
+                        printer = printer_helper(printer, toprow)
+                row = map(lambda x: node[x], toprow)
+                if printer and row:
+                    printer.add_row(row)
+            if printer:
+                print printer
+
+        def print_result_as_dict(result, result_filter=None):
+            for key in sorted(result.keys(),
+                              key=lambda x: x != 'id' and x != 'count' and x):
                 if not (isinstance(result[key], list) or
                         isinstance(result[key], dict)):
                     self.print_shell("%s = %s" % (key, result[key]))
                 else:
-                    self.print_shell(key + ":\n" + len(key) * "=")
-                    self.print_result(result[key])
+                    self.print_shell(key + ":\n" + len(key) * self.ruler)
+                    self.print_result(result[key], result_filter)
 
-        def print_result_as_list(result):
+        def print_result_as_list(result, result_filter=None):
             for node in result:
+                # Tabular print if it's a list of dict and tabularize is true
+                if isinstance(node, dict) and self.tabularize == 'true':
+                    print_result_tabular(result, result_filter)
+                    break
                 self.print_result(node)
                 if len(result) > 1:
                     self.print_shell(self.ruler * 80)
 
         if isinstance(result, dict):
-            print_result_as_dict(result)
+            print_result_as_dict(result, result_filter)
         elif isinstance(result, list):
-            print_result_as_list(result)
+            print_result_as_list(result, result_filter)
         elif isinstance(result, str):
             print result
         elif not (str(result) is None):
@@ -236,10 +267,18 @@ class CloudStackShell(cmd.Cmd, object):
             command = "queryAsyncJobResult"
             requests = {'jobid': jobId}
             timeout = int(self.timeout)
+            pollperiod = 3
+            progress = 1
             while timeout > 0:
+                print '\r' + '.' * progress,
+                sys.stdout.flush()
                 response = process_json(conn.make_request_with_auth(command,
                                                                     requests))
-                result = response[response.keys()[0]]
+                responsekeys = filter(lambda x: 'response' in x,
+                                      response.keys())
+                if len(responsekeys) < 1:
+                    continue
+                result = response[responsekeys[0]]
                 jobstatus = result['jobstatus']
                 if jobstatus == 2:
                     jobresult = result["jobresult"]
@@ -248,9 +287,11 @@ class CloudStackShell(cmd.Cmd, object):
                                      jobresult["errortext"])
                     return
                 elif jobstatus == 1:
+                    print '\r',
                     return response
-                time.sleep(4)
-                timeout = timeout - 4
+                time.sleep(pollperiod)
+                timeout = timeout - pollperiod
+                progress += 1
                 logger.debug("job: %s to timeout in %ds" % (jobId, timeout))
             self.print_shell("Error:", "Async query timeout for jobid=", jobId)
 
@@ -281,6 +322,11 @@ class CloudStackShell(cmd.Cmd, object):
         args_dict = dict(map(lambda x: [x.partition("=")[0],
                                         x.partition("=")[2]],
                              args[1:])[x] for x in range(len(args) - 1))
+        field_filter = None
+        if 'filter' in args_dict:
+            field_filter = filter(lambda x: x is not '',
+                                  map(lambda x: x.strip(),
+                                      args_dict.pop('filter').split(',')))
 
         api_cmd_str = "%sCmd" % api_name
         api_mod = self.get_api_module(api_name, [api_cmd_str])
@@ -297,8 +343,8 @@ class CloudStackShell(cmd.Cmd, object):
             setattr(api_cmd, attribute, args_dict[attribute])
 
         command = api_cmd()
-        missing_args = list(sets.Set(command.required).difference(
-                            sets.Set(args_dict.keys())))
+        missing_args = filter(lambda x: x not in args_dict.keys(),
+                              command.required)
 
         if len(missing_args) > 0:
             self.print_shell("Missing arguments:", ' '.join(missing_args))
@@ -312,35 +358,12 @@ class CloudStackShell(cmd.Cmd, object):
         if result is None:
             return
         try:
-            # Response is in the key "apiname+response" (lowercase)
-            self.print_result(result[api_name.lower()+'response'])
+            responsekeys = filter(lambda x: 'response' in x, result.keys())
+            for responsekey in responsekeys:
+                self.print_result(result[responsekey], field_filter)
             print
         except Exception as e:
             self.print_shell("🙈  Error on parsing and printing", e)
-
-    def cache_verb_miss(self, verb):
-        self.print_shell("Oops: Verb %s should have been precached" % verb)
-        completions_found = filter(lambda x: x.startswith(verb), completions)
-        self.cache_verbs[verb] = {}
-        for api_name in completions_found:
-            api_cmd_str = "%sCmd" % api_name
-            api_mod = self.get_api_module(api_name, [api_cmd_str])
-            if api_mod is None:
-                continue
-            try:
-                api_cmd = getattr(api_mod, api_cmd_str)()
-                required = api_cmd.required
-                doc = api_mod.__doc__
-            except AttributeError, e:
-                self.print_shell("Error: API attribute %s not found!" % e)
-            params = filter(lambda x: '__' not in x and 'required' not in x,
-                            dir(api_cmd))
-            if len(required) > 0:
-                doc += "\nRequired args: %s" % " ".join(required)
-            doc += "\nArgs: %s" % " ".join(params)
-            api_name_lower = api_name.replace(verb, '').lower()
-            self.cache_verbs[verb][api_name_lower] = [api_name, params, doc,
-                                                      required]
 
     def completedefault(self, text, line, begidx, endidx):
         partitions = line.partition(" ")
@@ -356,9 +379,6 @@ class CloudStackShell(cmd.Cmd, object):
         autocompletions = []
         search_string = ""
 
-        if verb not in self.cache_verbs:
-            self.cache_verb_miss(verb)
-
         if separator != " ":   # Complete verb subjects
             autocompletions = self.cache_verbs[verb].keys()
             search_string = subject
@@ -367,6 +387,7 @@ class CloudStackShell(cmd.Cmd, object):
                                   self.cache_verbs[verb][subject][1])
             search_string = text
 
+        autocompletions.append("filter=")
         return [s for s in autocompletions if s.startswith(search_string)]
 
     def do_api(self, args):
@@ -388,7 +409,7 @@ class CloudStackShell(cmd.Cmd, object):
 
     def do_set(self, args):
         """
-        Set config for CloudStack CLI. Available options are:
+        Set config for cloudmonkey. For example, options can be:
         host, port, apikey, secretkey, log_file, history_file
         You may also edit your ~/.cloudmonkey_config instead of using set.
 
@@ -399,8 +420,8 @@ class CloudStackShell(cmd.Cmd, object):
         """
         args = args.strip().partition(" ")
         key, value = (args[0], args[2])
-        # Note: keys and class attributes should have same names
-        setattr(self, key, value)
+        setattr(self, key, value)  # keys and attributes should have same names
+        self.prompt += " "         # prompt fix
         self.write_config()
 
     def complete_set(self, text, line, begidx, endidx):
@@ -438,8 +459,6 @@ class CloudStackShell(cmd.Cmd, object):
         else:
             verb = fields[0]
             subject = fields[2].partition(" ")[0]
-            if verb not in self.cache_verbs:
-                self.cache_verb_miss(verb)
 
             if subject in self.cache_verbs[verb]:
                 self.print_shell(self.cache_verbs[verb][subject][2])
@@ -460,13 +479,13 @@ class CloudStackShell(cmd.Cmd, object):
 
     def do_exit(self, args):
         """
-        Quit Apache CloudStack CLI
+        Quit CloudMonkey CLI
         """
         return self.do_quit(args)
 
     def do_quit(self, args):
         """
-        Quit Apache CloudStack CLI
+        Quit CloudMonkey CLI
         """
         self.print_shell("Bye!")
         return self.do_EOF(args)
@@ -480,7 +499,7 @@ class CloudStackShell(cmd.Cmd, object):
 
 def main():
     # Create handlers on the fly using closures
-    self = CloudStackShell
+    self = CloudMonkeyShell
     global grammar
     for rule in grammar:
         def add_grammar(rule):
@@ -491,12 +510,9 @@ def main():
                         prog_name = "python " + prog_name
                     self.do_shell("%s %s %s" % (prog_name, rule, args))
                     return
-                if not rule in self.cache_verbs:
-                    self.cache_verb_miss(rule)
                 try:
                     args_partition = args.partition(" ")
                     res = self.cache_verbs[rule][args_partition[0]]
-
                 except KeyError, e:
                     self.print_shell("Error: invalid %s api arg" % rule, e)
                     return
@@ -511,7 +527,7 @@ def main():
         grammar_handler.__name__ = 'do_' + rule
         setattr(self, grammar_handler.__name__, grammar_handler)
 
-    shell = CloudStackShell()
+    shell = CloudMonkeyShell()
     if len(sys.argv) > 1:
         shell.onecmd(' '.join(sys.argv[1:]))
     else:

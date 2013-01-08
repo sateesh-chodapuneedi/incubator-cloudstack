@@ -423,6 +423,7 @@ public class ApiResponseHelper implements ResponseGenerator {
     
     @Override
     public UserResponse createUserResponse(UserAccount user) {
+    	Account account = UserContext.current().getCaller();
         UserResponse userResponse = new UserResponse();
         userResponse.setAccountName(user.getAccountName());
         userResponse.setAccountType(user.getType());
@@ -439,8 +440,8 @@ public class ApiResponseHelper implements ResponseGenerator {
         userResponse.setApiKey(user.getApiKey());
         userResponse.setSecretKey(user.getSecretKey());
         userResponse.setAccountId((user.getAccountId()));
+        userResponse.setIsCallerChildDomain(ApiDBUtils.isChildDomain(account.getDomainId(), user.getDomainId()));
         userResponse.setObjectName("user");
-
         return userResponse;
     }
 
@@ -3004,6 +3005,11 @@ public class ApiResponseHelper implements ResponseGenerator {
                 eLb.setName(Capability.ElasticLb.getName());
                 eLb.setValue(offering.getElasticLb() ? "true" : "false");
                 lbCapResponse.add(eLb);
+
+		CapabilityResponse inline = new CapabilityResponse();
+		inline.setName(Capability.InlineMode.getName());
+		inline.setValue(offering.isInline() ? "true" : "false");
+		lbCapResponse.add(inline);
 
                 svcRsp.setCapabilities(lbCapResponse);
             } else if (Service.SourceNat == service) {
