@@ -233,7 +233,8 @@
         name: 'Instance details',
         viewAll: [
           { path: 'storage.volumes', label: 'label.volumes' },
-          { path: 'storage.snapshots', label: 'label.snapshots' }
+          { path: 'storage.snapshots', label: 'label.snapshots' },
+          { path: 'system', label: 'label.hosts' }
         ],
         tabFilter: function(args) {
           var hiddenTabs = [];
