@@ -892,25 +892,49 @@
         $actions.prependTo($firstRow.closest('div.detail-group').closest('.details'));
       }
       if (detailViewArgs.viewAll && showViewAll) {
-        $('<div>')
-          .addClass('view-all')
-          .append(
-            $('<a>')
-              .attr({ href: '#' })
-              .data('detail-view-link-view-all', detailViewArgs.viewAll)
-              .append(
-                $('<span>').html(_l('label.view') + ' ' + _l(detailViewArgs.viewAll.label))
-              )
-          )
-          .append(
-            $('<div>').addClass('end')
-          )
-          .appendTo(
-            $('<td>')
-              .addClass('view-all')
-              .appendTo($actions.find('tr'))
-          );
+        if (!$.isArray(detailViewArgs.viewAll)) {
+          $('<div>')
+            .addClass('view-all')
+            .append(
+              $('<a>')
+                .attr({ href: '#' })
+                .data('detail-view-link-view-all', detailViewArgs.viewAll)
+                .append(
+                  $('<span>').html(_l('label.view') + ' ' + _l(detailViewArgs.viewAll.label))
+                )
+            )
+            .append(
+              $('<div>').addClass('end')
+            )
+            .appendTo(
+              $('<td>')
+                .addClass('view-all')
+                .appendTo($actions.find('tr'))
+            );
+        } else {
+          $(detailViewArgs.viewAll).each(function() {
+            var viewAllItem = this;
 
+            $('<div>')
+              .addClass('view-all')
+              .append(
+                $('<a>')
+                  .attr({ href: '#' })
+                  .data('detail-view-link-view-all', viewAllItem)
+                  .append(
+                    $('<span>').html(_l('label.view') + ' ' + _l(viewAllItem.label))
+                  )
+              )
+              .append(
+                $('<div>').addClass('end')
+              )
+              .appendTo(
+                $('<td>')
+                  .addClass('view-all')
+                  .appendTo($actions.find('tr'))
+              );
+          });
+        }
       }
     }
 
