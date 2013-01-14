@@ -237,7 +237,7 @@
           {
             path: '_zone.hosts',
             label: 'label.hosts',
-            preFiter: function(args) {
+            preFilter: function(args) {
               return isAdmin();
             },
             updateContext: function(args) {
