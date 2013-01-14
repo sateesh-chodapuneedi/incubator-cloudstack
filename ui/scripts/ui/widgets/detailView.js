@@ -578,7 +578,7 @@
     }
   };
 
-  var viewAll = function(viewAllID) {
+  var viewAll = function(viewAllID, options) {
     var $detailView = $('div.detail-view:last');
     var args = $detailView.data('view-args');
     var cloudStackArgs = $('[cloudstack-container]').data('cloudStack-args');
@@ -586,6 +586,7 @@
     var listViewArgs, viewAllPath;
     var $listView;
     var isCustom = $.isFunction(viewAllID.custom);
+    var updateContext = options.updateContext;
 
     if (isCustom) {
       $browser.cloudBrowser('addPanel', {
@@ -636,6 +637,10 @@
 
     // Load context data
     var context = $.extend(true, {}, $detailView.data('view-args').context);
+
+    if (updateContext) {
+      $.extend(context, updateContext({ context: context }));
+    }
 
     // Make panel
     var $panel = $browser.cloudBrowser('addPanel', {
@@ -914,6 +919,11 @@
         } else {
           $(detailViewArgs.viewAll).each(function() {
             var viewAllItem = this;
+
+            if (viewAllItem.preFilter &&
+                !viewAllItem.preFilter({ context: context })) {
+              return true;
+            }
 
             $('<div>')
               .addClass('view-all')
@@ -1199,12 +1209,17 @@
   $('a').live('click', function(event) {
     var $target = $(event.target);
     var $viewAll = $target.closest('td.view-all a');
+    var viewAllArgs;
 
     if ($target.closest('div.detail-view').size() && $target.closest('td.view-all a').size()) {
+      viewAllArgs = $viewAll.data('detail-view-link-view-all');
       viewAll(
-        $viewAll.data('detail-view-link-view-all').custom ?
-          $viewAll.data('detail-view-link-view-all') :
-          $viewAll.data('detail-view-link-view-all').path
+        viewAllArgs.custom ?
+          viewAllArgs :
+          viewAllArgs.path,
+        {
+          updateContext: viewAllArgs.updateContext
+        }
       );
       return false;
     }
