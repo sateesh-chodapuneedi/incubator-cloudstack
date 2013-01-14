@@ -16,11 +16,11 @@
 // under the License.
 package com.cloud.network;
 
-import com.cloud.acl.ControlledEntity.ACLType;
-import com.cloud.api.commands.CreateNetworkCmd;
-import com.cloud.api.commands.ListNetworksCmd;
-import com.cloud.api.commands.ListTrafficTypeImplementorsCmd;
-import com.cloud.api.commands.RestartNetworkCmd;
+import org.apache.cloudstack.acl.ControlledEntity.ACLType;
+import org.apache.cloudstack.api.command.admin.usage.ListTrafficTypeImplementorsCmd;
+import org.apache.cloudstack.api.command.user.network.CreateNetworkCmd;
+import org.apache.cloudstack.api.command.user.network.ListNetworksCmd;
+import org.apache.cloudstack.api.command.user.network.RestartNetworkCmd;
 import com.cloud.dc.DataCenter;
 import com.cloud.dc.Vlan;
 import com.cloud.dc.Vlan.VlanType;
@@ -108,6 +108,12 @@ public class MockNetworkManagerImpl implements NetworkManager, Manager, NetworkS
 
     @Override
     public Network getNetwork(long networkId) {
+        // TODO Auto-generated method stub
+        return null;
+    }
+
+    @Override
+    public Network getNetwork(String networkUuid) {
         // TODO Auto-generated method stub
         return null;
     }
@@ -931,7 +937,6 @@ public class MockNetworkManagerImpl implements NetworkManager, Manager, NetworkS
     }
 
     /* (non-Javadoc)
-<<<<<<< HEAD
      * @see com.cloud.network.NetworkManager#getDefaultPublicTrafficLabel(long, com.cloud.hypervisor.Hypervisor.HypervisorType)
      */
     @Override
@@ -942,9 +947,6 @@ public class MockNetworkManagerImpl implements NetworkManager, Manager, NetworkS
 
     /* (non-Javadoc)
      * @see com.cloud.network.NetworkManager#assignSourceNatIpAddressToGuestNetwork(com.cloud.user.Account, com.cloud.network.Network)
-=======
-     * @see com.cloud.network.NetworkManager#getNicProfile(com.cloud.vm.VirtualMachine, long)
->>>>>>> ddb9e49... VPC: unittest preparation
      */
     @Override
     public PublicIp assignSourceNatIpAddressToGuestNetwork(Account owner, Network guestNetwork) throws InsufficientAddressCapacityException, ConcurrentOperationException {
@@ -999,7 +1001,6 @@ public class MockNetworkManagerImpl implements NetworkManager, Manager, NetworkS
     }
 
     /* (non-Javadoc)
-<<<<<<< HEAD
      * @see com.cloud.network.NetworkManager#getSite2SiteVpnElements()
      */
     @Override
@@ -1010,9 +1011,6 @@ public class MockNetworkManagerImpl implements NetworkManager, Manager, NetworkS
 
     /* (non-Javadoc)
      * @see com.cloud.network.NetworkManager#isPrivateGateway(com.cloud.vm.Nic)
-=======
-     * @see com.cloud.network.NetworkService#canUseForDeploy(com.cloud.network.Network)
->>>>>>> ddb9e49... VPC: unittest preparation
      */
     @Override
     public boolean isPrivateGateway(Nic guestNic) {

@@ -24,10 +24,11 @@ import java.util.Set;
 
 import javax.ejb.Local;
 
+import com.cloud.utils.PropertiesUtil;
+import org.apache.cloudstack.api.command.admin.router.ConfigureVirtualRouterElementCmd;
+import org.apache.cloudstack.api.command.admin.router.ListVirtualRouterElementsCmd;
 import org.apache.log4j.Logger;
 
-import com.cloud.api.commands.ConfigureVirtualRouterElementCmd;
-import com.cloud.api.commands.ListVirtualRouterElementsCmd;
 import com.cloud.configuration.ConfigurationManager;
 import com.cloud.configuration.dao.ConfigurationDao;
 import com.cloud.dc.DataCenter;
@@ -680,8 +681,9 @@ public class VirtualRouterElement extends AdapterBase implements VirtualRouterEl
     }
 
     @Override
-    public String getPropertiesFile() {
-        return "virtualrouter_commands.properties";
+    public Map<String, String> getProperties() {
+        return PropertiesUtil.processConfigFile(new String[]
+                { "virtualrouter_commands.properties" });
     }
 
     @Override

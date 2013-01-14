@@ -17,7 +17,6 @@
 
 package com.cloud.network.router;
 
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -42,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 import javax.ejb.Local;
 import javax.naming.ConfigurationException;
 
+import org.apache.cloudstack.api.command.admin.router.UpgradeRouterCmd;
 import org.apache.log4j.Logger;
 
 import com.cloud.agent.AgentManager;
@@ -72,7 +72,6 @@ import com.cloud.agent.api.routing.NetworkElementCommand;
 import com.cloud.agent.api.routing.RemoteAccessVpnCfgCommand;
 import com.cloud.agent.api.routing.SavePasswordCommand;
 import com.cloud.agent.api.routing.SetFirewallRulesCommand;
-import com.cloud.agent.api.routing.SetNetworkACLCommand;
 import com.cloud.agent.api.routing.SetPortForwardingRulesCommand;
 import com.cloud.agent.api.routing.SetPortForwardingRulesVpcCommand;
 import com.cloud.agent.api.routing.SetStaticNatRulesCommand;
@@ -81,14 +80,12 @@ import com.cloud.agent.api.routing.VpnUsersCfgCommand;
 import com.cloud.agent.api.to.FirewallRuleTO;
 import com.cloud.agent.api.to.IpAddressTO;
 import com.cloud.agent.api.to.LoadBalancerTO;
-import com.cloud.agent.api.to.NetworkACLTO;
 import com.cloud.agent.api.to.NicTO;
 import com.cloud.agent.api.to.PortForwardingRuleTO;
 import com.cloud.agent.api.to.StaticNatRuleTO;
 import com.cloud.agent.api.to.VirtualMachineTO;
 import com.cloud.agent.manager.Commands;
 import com.cloud.alert.AlertManager;
-import com.cloud.api.commands.UpgradeRouterCmd;
 import com.cloud.cluster.ManagementServerHostVO;
 import com.cloud.cluster.ManagementServerNode;
 import com.cloud.cluster.dao.ManagementServerHostDao;
@@ -826,26 +823,29 @@ public class VirtualNetworkApplianceManagerImpl implements VirtualNetworkApplian
                     String privateIP = router.getPrivateIpAddress();
 
                     if (privateIP != null) {
+                        boolean forVpc = router.getVpcId() != null;
                         List<? extends Nic> routerNics = _nicDao.listByVmId(router.getId());
                         for (Nic routerNic : routerNics) {
                             Network network = _networkMgr.getNetwork(routerNic.getNetworkId());
-                            if (network.getTrafficType() == TrafficType.Public) {
-                                boolean forVpc = router.getVpcId() != null;
+                            //Send network usage command for public nic in VPC VR
+                            //Send network usage command for isolated guest nic of non VPC VR                            
+                            if ((forVpc && network.getTrafficType() == TrafficType.Public) || (!forVpc && network.getTrafficType() == TrafficType.Guest && network.getGuestType() == Network.GuestType.Isolated)) {
                                 final NetworkUsageCommand usageCmd = new NetworkUsageCommand(privateIP, router.getHostName(),
                                         forVpc, routerNic.getIp4Address());
-                                UserStatisticsVO previousStats = _statsDao.findBy(router.getAccountId(), 
-                                        router.getDataCenterIdToDeployIn(), network.getId(), null, router.getId(), router.getType().toString());
+                                String routerType = router.getType().toString();
+                                UserStatisticsVO previousStats = _statsDao.findBy(router.getAccountId(),
+                                        router.getDataCenterIdToDeployIn(), network.getId(), (forVpc ? routerNic.getIp4Address() : null), router.getId(), routerType);
                                 NetworkUsageAnswer answer = null;
                                 try {
                                     answer = (NetworkUsageAnswer) _agentMgr.easySend(router.getHostId(), usageCmd);
                                 } catch (Exception e) {
-                                    s_logger.warn("Error while collecting network stats from router: "+router.getInstanceName()+" from host: "+router.getHostId(), e);
+                                    s_logger.warn("Error while collecting network stats from router: " + router.getInstanceName() + " from host: " + router.getHostId(), e);
                                     continue;
                                 }
 
                                 if (answer != null) {
                                     if (!answer.getResult()) {
-                                        s_logger.warn("Error while collecting network stats from router: "+router.getInstanceName()+" from host: "+router.getHostId() + "; details: " + answer.getDetails());
+                                        s_logger.warn("Error while collecting network stats from router: " + router.getInstanceName() + " from host: " + router.getHostId() + "; details: " + answer.getDetails());
                                         continue;
                                     }
                                     Transaction txn = Transaction.open(Transaction.CLOUD_DB);
@@ -855,27 +855,27 @@ public class VirtualNetworkApplianceManagerImpl implements VirtualNetworkApplian
                                             continue;
                                         }
                                         txn.start();
-                                        UserStatisticsVO stats = _statsDao.lock(router.getAccountId(), 
-                                                router.getDataCenterIdToDeployIn(), network.getId(), routerNic.getIp4Address(), router.getId(), router.getType().toString());
+                                        UserStatisticsVO stats = _statsDao.lock(router.getAccountId(),
+                                                router.getDataCenterIdToDeployIn(), network.getId(), (forVpc ? routerNic.getIp4Address() : null), router.getId(), routerType);
                                         if (stats == null) {
                                             s_logger.warn("unable to find stats for account: " + router.getAccountId());
                                             continue;
                                         }
 
-                                        if(previousStats != null 
-                                                && ((previousStats.getCurrentBytesReceived() != stats.getCurrentBytesReceived()) 
-                                                        || (previousStats.getCurrentBytesSent() != stats.getCurrentBytesSent()))){
+                                        if (previousStats != null
+                                                && ((previousStats.getCurrentBytesReceived() != stats.getCurrentBytesReceived())
+                                                || (previousStats.getCurrentBytesSent() != stats.getCurrentBytesSent()))) {
                                             s_logger.debug("Router stats changed from the time NetworkUsageCommand was sent. " +
-                                                    "Ignoring current answer. Router: "+answer.getRouterName()+" Rcvd: " + 
-                                                    answer.getBytesReceived()+ "Sent: " +answer.getBytesSent());
+                                                    "Ignoring current answer. Router: " + answer.getRouterName() + " Rcvd: " +
+                                                    answer.getBytesReceived() + "Sent: " + answer.getBytesSent());
                                             continue;
                                         }
 
                                         if (stats.getCurrentBytesReceived() > answer.getBytesReceived()) {
                                             if (s_logger.isDebugEnabled()) {
                                                 s_logger.debug("Received # of bytes that's less than the last one.  " +
-                                                        "Assuming something went wrong and persisting it. Router: " + 
-                                                        answer.getRouterName()+" Reported: " + answer.getBytesReceived()
+                                                        "Assuming something went wrong and persisting it. Router: " +
+                                                        answer.getRouterName() + " Reported: " + answer.getBytesReceived()
                                                         + " Stored: " + stats.getCurrentBytesReceived());
                                             }
                                             stats.setNetBytesReceived(stats.getNetBytesReceived() + stats.getCurrentBytesReceived());
@@ -884,8 +884,8 @@ public class VirtualNetworkApplianceManagerImpl implements VirtualNetworkApplian
                                         if (stats.getCurrentBytesSent() > answer.getBytesSent()) {
                                             if (s_logger.isDebugEnabled()) {
                                                 s_logger.debug("Received # of bytes that's less than the last one.  " +
-                                                        "Assuming something went wrong and persisting it. Router: " + 
-                                                        answer.getRouterName()+" Reported: " + answer.getBytesSent()
+                                                        "Assuming something went wrong and persisting it. Router: " +
+                                                        answer.getRouterName() + " Reported: " + answer.getBytesSent()
                                                         + " Stored: " + stats.getCurrentBytesSent());
                                             }
                                             stats.setNetBytesSent(stats.getNetBytesSent() + stats.getCurrentBytesSent());
