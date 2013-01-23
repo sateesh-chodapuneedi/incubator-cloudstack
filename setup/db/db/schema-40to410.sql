@@ -141,6 +141,15 @@ UPDATE `cloud`.`conditions` set uuid=id WHERE uuid is NULL;
 
 INSERT IGNORE INTO `cloud`.`configuration` VALUES ('Advanced', 'DEFAULT', 'management-server', '"detail.batch.query.size"', '2000', 'Default entity detail batch query size for listing');
 
+-- Windows 8 support for Vmware
+INSERT INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (208, UUID(), 6, 'Windows 8');
+INSERT INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (209, UUID(), 6, 'Windows 8 (64 bit)');
+INSERT INTO `cloud`.`guest_os` (id, uuid, category_id, display_name) VALUES (210, UUID(), 6, 'Windows 8 Server (64 bit)');
+
+INSERT INTO `cloud`.`guest_os_hypervisor` (hypervisor_type, guest_os_name, guest_os_id) VALUES ("VmWare", 'Windows 8', 208);
+INSERT INTO `cloud`.`guest_os_hypervisor` (hypervisor_type, guest_os_name, guest_os_id) VALUES ("VmWare", 'Windows 8 (64 bit)', 209);
+INSERT INTO `cloud`.`guest_os_hypervisor` (hypervisor_type, guest_os_name, guest_os_id) VALUES ("VmWare", 'Windows 8 Server (64 bit)', 210);
+
 -- DB views for list api
 
 DROP VIEW IF EXISTS `cloud`.`user_vm_view`;
