@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class ServiceForRouter(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def change(self, apiclient, id, serviceofferingid, **kwargs):
         pass
 

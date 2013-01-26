@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class FromLoadBalancerRule(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def remove(self, apiclient, id, virtualmachineids, **kwargs):
         pass
 

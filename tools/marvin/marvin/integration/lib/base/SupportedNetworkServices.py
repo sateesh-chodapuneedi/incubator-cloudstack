@@ -17,6 +17,11 @@
 from . import CloudStackEntity
 class SupportedNetworkServices(CloudStackEntity):
 
-    def list(self, apiclient, **kwargs):
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
         pass
 

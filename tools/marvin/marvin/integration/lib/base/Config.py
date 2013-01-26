@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class Config(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def ldap(self, apiclient, queryfilter, hostname, searchbase, **kwargs):
         pass
 

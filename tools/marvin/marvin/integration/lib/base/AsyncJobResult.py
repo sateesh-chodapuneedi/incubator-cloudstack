@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class AsyncJobResult(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def query(self, apiclient, jobid, **kwargs):
         pass
 

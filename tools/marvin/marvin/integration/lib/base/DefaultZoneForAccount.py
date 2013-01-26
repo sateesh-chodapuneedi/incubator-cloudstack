@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class DefaultZoneForAccount(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def mark(self, apiclient, account, domainid, zoneid, **kwargs):
         pass
 

@@ -17,6 +17,11 @@
 from . import CloudStackEntity
 class UsageTypes(CloudStackEntity):
 
-    def list(self, apiclient):
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
+    @classmethod
+    def list(cls, apiclient):
         pass
 

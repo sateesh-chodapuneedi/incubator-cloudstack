@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class HostPassword(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def update(self, apiclient, username, password, **kwargs):
         pass
 

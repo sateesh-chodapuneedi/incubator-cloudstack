@@ -17,6 +17,11 @@
 from . import CloudStackEntity
 class LoadBalancerRuleInstances(CloudStackEntity):
 
-    def list(self, apiclient, id, **kwargs):
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
+    @classmethod
+    def list(cls, apiclient, **kwargs):
         pass
 

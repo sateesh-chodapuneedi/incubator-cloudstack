@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class HostForMaintenance(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def prepare(self, apiclient, id, **kwargs):
         pass
 

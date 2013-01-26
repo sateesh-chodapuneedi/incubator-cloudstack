@@ -17,6 +17,10 @@
 from . import CloudStackEntity
 class UserKeys(CloudStackEntity):
 
+    def __init__(self, items):
+        self.__dict__.update(items)
+
+
     def register(self, apiclient, id, **kwargs):
         pass
 
