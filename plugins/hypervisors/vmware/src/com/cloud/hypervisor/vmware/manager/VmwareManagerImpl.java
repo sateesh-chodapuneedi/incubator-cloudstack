@@ -126,10 +126,8 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
     StorageLayer _storage;
 
     String _privateNetworkVSwitchName = "vSwitch0";
-    String _publicNetworkVSwitchName = "vSwitch0";
-    String _guestNetworkVSwitchName = "vSwitch0";
+
     boolean _nexusVSwitchActive = false;
-    boolean _useDVS = false;
     int _portsPerDvPortGroup = 256;
     String _serviceConsoleName;
     String _managemetPortGroupName;
@@ -221,23 +219,6 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
             _nexusVSwitchActive = Boolean.parseBoolean(value);
         }
 
-        value = configDao.getValue(Config.VmwareUseDVSwitch.key());
-        if (value != null) {
-            _useDVS = Boolean.parseBoolean(value);
-        }
-        // Set default physical network end points for public and guest traffic
-        // Private traffic will be only on standard vSwitch for now. See below TODO.
-        // TODO(sateesh): Assert if private traffic label indicates standard vSwitch.
-        // If not standard vSwitch we need to validate the management network configuration in the host
-        // i.e. 1) Management network should be a distributed port group
-        // 2) Specified network label should be same as that of management network if management network VLAN is tagged.
-        // This is to ensure same VLAN is not present across physical networks.
-        if (_useDVS) {
-            _publicNetworkVSwitchName = _nexusVSwitchActive ? "epp0" : "dvSwitch0";
-            _guestNetworkVSwitchName = _nexusVSwitchActive ? "epp0" : "dvSwitch0";
-            String defaultPortCount = configDao.getValue(Config.VmwarePortsPerDVPortGroup.key());
-            _portsPerDvPortGroup = Integer.parseInt(defaultPortCount);
-        }
         _serviceConsoleName = configDao.getValue(Config.VmwareServiceConsole.key());
         if(_serviceConsoleName == null) {
             _serviceConsoleName = "Service Console";
@@ -532,7 +513,6 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
         params.put("vmware.root.disk.controller", _rootDiskController);
         params.put("vmware.recycle.hung.wokervm", _recycleHungWorker);
         params.put("ports.per.dvportgroup", _portsPerDvPortGroup);
-        params.put("vmware.use.dvswitch", _useDVS);
     }
 
     @Override
@@ -955,10 +935,5 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
     @Override
     public boolean getNexusVSwitchGlobalParameter() {
         return _nexusVSwitchActive;
-    }
-
-    @Override
-    public boolean getUseDVSwitchGlobalParameter() {
-        return _useDVS;
     }
 }

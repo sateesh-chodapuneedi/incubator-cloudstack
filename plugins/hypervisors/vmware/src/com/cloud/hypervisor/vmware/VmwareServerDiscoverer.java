@@ -124,15 +124,33 @@ public class VmwareServerDiscoverer extends DiscovererBase implements Discoverer
         String publicTrafficLabel = null;
         String guestTrafficLabel = null;
         Map<String, String> vsmCredentials = null;
-        String paramVswitchTypeGuest;
-        String paramVswitchTypePublic;
+        String value;
+        boolean useDVS = false;
+        String paramVswitchTypeGuest = null;
+        String paramVswitchTypePublic = null;
+
         VmwareTrafficLabel guestTrafficLabelObj = new VmwareTrafficLabel(TrafficType.Guest);
         VmwareTrafficLabel publicTrafficLabelObj = new VmwareTrafficLabel(TrafficType.Public);
         Map<String, String> clusterDetails = _clusterDetailsDao.findDetails(clusterId);
 
-        // Parse url parameter vswitchtype and validate vswitch type
-        paramVswitchTypeGuest = _urlParams.get("vswitchtypeguest");
-        paramVswitchTypePublic = _urlParams.get("vswitchtypepublic");
+        value = _configDao.getValue(Config.VmwareUseDVSwitch.key());
+        if (value != null) {
+            useDVS = Boolean.parseBoolean(value);
+        }
+        // Set default physical network end points for public and guest traffic
+        // Private traffic will be only on standard vSwitch for now. See below TODO.
+        // TODO(sateesh): Assert if private traffic label indicates standard vSwitch.
+        // If not standard vSwitch we need to validate the management network configuration in the host
+        // i.e. 1) Management network should be a distributed port group
+        // 2) Specified network label should be same as that of management network if management network VLAN is tagged.
+        // This is to ensure same VLAN is not present across physical networks.
+        if (useDVS) {
+            guestTrafficLabelObj.setVirtualSwitchName("dvSwitch0");
+            publicTrafficLabelObj.setVirtualSwitchName("dvSwitch0");
+            // Parse url parameter vswitchtype and validate vswitch type
+            paramVswitchTypeGuest = _urlParams.get("vswitchtypeguest");
+            paramVswitchTypePublic = _urlParams.get("vswitchtypepublic");
+        }
 
         // Zone level vSwitch Type depends on zone level traffic labels
         //

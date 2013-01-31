@@ -70,6 +70,4 @@ public interface VmwareManager {
     Map<String, String> getNexusVSMCredentialsByClusterId(Long clusterId);
 
     String getPrivateVSwitchName(long dcId, HypervisorType hypervisorType);
-
-    boolean getUseDVSwitchGlobalParameter();
 }

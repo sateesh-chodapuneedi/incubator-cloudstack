@@ -61,11 +61,14 @@ public class VmwareTrafficLabel implements TrafficLabel {
         return _vSwitchName;
     }
 
-    public VirtualSwitchType setVirtualSwitchType(VirtualSwitchType vSwitchType) {
-        return _vSwitchType = vSwitchType;
-    }
-
     public String getVlanId() {
         return _vlanId;
+    }
+    public void setVirtualSwitchName(String vSwitchName) {
+        _vSwitchName = vSwitchName;
+    }
+
+    public VirtualSwitchType setVirtualSwitchType(VirtualSwitchType vSwitchType) {
+        return _vSwitchType = vSwitchType;
     }
 }
