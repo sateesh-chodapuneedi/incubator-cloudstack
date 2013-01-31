@@ -727,7 +727,7 @@
               });
 
               var vSwitchEnabled = false;
-
+              var dvSwitchEnabled = false;
               // Check whether vSwitch capability is enabled
               $.ajax({
                 url: createURL('listConfigurations'),
@@ -741,6 +741,19 @@
                   }
                 }
               });
+
+              //Check whether dvSwitch is enabled or not
+              $.ajax({
+                 url: createURL('listConfigurations'),
+                 data: {
+                   name: 'vmware.use.dvswitch'
+                      },
+                 async: false,
+                 success: function(json) {                                                                                                                                                                                if (json.listconfigurationsresponse.configuration[0].value == 'true') {                                                                                                                                   dvSwitchEnabled = true;
+                                                                                                                                                                                                                          }
+                                                                                                                                                                                                                          } 
+                                                                                                                                                                                                                   });
+
 
               args.$select.bind("change", function(event) {
                 var $form = $(this).closest('form');
@@ -756,6 +769,16 @@
 
                 if($(this).val() == "VMware") {
                   //$('li[input_sub_group="external"]', $dialogAddCluster).show();
+
+                    if(dvSwitchEnabled ){
+                        $form.find('.form-item[rel=vSwitchPublicType]').css('display', 'inline-block');
+                        $form.find('.form-item[rel=vSwitchGuestType]').css('display', 'inline-block');
+                                       }
+                    else {
+                         $form.find('.form-item[rel=vSwitchPublicType]').css('display', 'none');
+                         $form.find('.form-item[rel=vSwitchGuestType]').css('display', 'none');
+                                                                                                                                                                                                                          }
+
                   $form.find('[rel=vCenterHost]').css('display', 'block');
                   $form.find('[rel=vCenterUsername]').css('display', 'block');
                   $form.find('[rel=vCenterPassword]').css('display', 'block');
@@ -786,6 +809,28 @@
           },
 
           //hypervisor==VMWare begins here
+
+           vSwitchPublicType:{
+                label: 'Public Traffic vSwitch Type',
+                select: function(args) {
+                    var items = []
+                    items.push({id: "vmwaresvs", description: "VMware vNetwork Standard Virtual Switch"});
+                    items.push({id: "vmwaredvs", description: "VMware vNetwork Distributed Virtual Switch"});
+                    args.response.success({data: items});
+                    },
+                    isHidden:true
+                                                                                                                                                                                                                    },
+                                                                                                                                                                                                               vSwitchGuestType:{
+               label: 'Guest Traffic vSwitch Type',
+               select: function(args) {
+               var items = []
+               items.push({id: "vmwaresvs", description: "VMware vNetwork Standard Virtual Switch"});
+               items.push({id: "vmwaredvs", description: "VMware vNetwork Distributed Virtual Switch"});
+                                                                                                                                                                                                                    args.response.success({data: items});
+                                                                                                                                                                                                                    },                                                                                                                                                                                                   isHidden:true
+                                                                                                                                                                                                                                                                                                                                                                                                                         },
+
+
           vCenterHost: {
             label: 'label.vcenter.host',
             validation: { required: true }
@@ -2844,6 +2889,10 @@
           if(args.data.cluster.hypervisor == "VMware") {
             array1.push("&username=" + todb(args.data.cluster.vCenterUsername));
             array1.push("&password=" + todb(args.data.cluster.vCenterPassword));
+
+              array1.push('&vswitchtypepublic=' + args.data.cluster.vSwitchPublicType);
+              array1.push('&vswitchtypeguest=' + args.data.cluster.vSwitchGuestType);
+
 
             if (args.data.cluster.vsmipaddress) { // vSwitch is enabled
               array1.push('&vsmipaddress=' + args.data.cluster.vsmipaddress);
