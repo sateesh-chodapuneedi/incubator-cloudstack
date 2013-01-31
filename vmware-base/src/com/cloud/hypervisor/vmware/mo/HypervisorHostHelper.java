@@ -602,11 +602,12 @@ public class HypervisorHostHelper {
         DVPortgroupConfigSpec spec = new DVPortgroupConfigSpec();
         spec.setName(dvPortGroupName);
         spec.setDefaultPortConfig(portSetting);
-        spec.setPortNameFormat("<dvPortGroupName>-vnic<portIndex>");
+        spec.setPortNameFormat("<portGroupName>-vnic<portIndex>");
         spec.setType("earlyBinding");
         spec.setNumPorts(numPorts);
         // TODO(sateesh): Get vSphere API version and
         // if >= 5.0 set autoExpand property of dvPortGroup config spec to true.
+        // spec.setAutoExpand(true);
         return spec;
     }
 
