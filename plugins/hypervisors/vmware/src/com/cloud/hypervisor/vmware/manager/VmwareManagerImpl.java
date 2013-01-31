@@ -11,7 +11,7 @@
 // Unless required by applicable law or agreed to in writing,
 // software distributed under the License is distributed on an
 // "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-// KIND, either express or implied.  See the License for the 
+// KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
 package com.cloud.hypervisor.vmware.manager;
@@ -59,10 +59,6 @@ import com.cloud.host.Status;
 import com.cloud.host.dao.HostDao;
 import com.cloud.hypervisor.Hypervisor.HypervisorType;
 import com.cloud.hypervisor.vmware.VmwareCleanupMaid;
-import com.cloud.hypervisor.vmware.manager.VmwareManager;
-import com.cloud.hypervisor.vmware.manager.VmwareStorageManager;
-import com.cloud.hypervisor.vmware.manager.VmwareStorageManagerImpl;
-import com.cloud.hypervisor.vmware.manager.VmwareStorageMount;
 import com.cloud.hypervisor.vmware.mo.DiskControllerType;
 import com.cloud.hypervisor.vmware.mo.HostFirewallSystemMO;
 import com.cloud.hypervisor.vmware.mo.HostMO;
@@ -70,7 +66,6 @@ import com.cloud.hypervisor.vmware.mo.HypervisorHostHelper;
 import com.cloud.hypervisor.vmware.mo.TaskMO;
 import com.cloud.hypervisor.vmware.mo.VirtualEthernetCardType;
 import com.cloud.hypervisor.vmware.mo.VmwareHostType;
-import com.cloud.utils.ssh.SshHelper;
 import com.cloud.hypervisor.vmware.util.VmwareContext;
 import com.cloud.network.CiscoNexusVSMDeviceVO;
 import com.cloud.network.NetworkModel;
@@ -92,6 +87,7 @@ import com.cloud.utils.db.DB;
 import com.cloud.utils.db.GlobalLock;
 import com.cloud.utils.exception.CloudRuntimeException;
 import com.cloud.utils.script.Script;
+import com.cloud.utils.ssh.SshHelper;
 import com.cloud.vm.DomainRouterVO;
 import com.google.gson.Gson;
 import com.vmware.apputils.vim25.ServiceUtil;
@@ -123,16 +119,18 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
     @Inject SecondaryStorageVmManager _ssvmMgr;
     @Inject CiscoNexusVSMDeviceDao _nexusDao;
     @Inject ClusterVSMMapDao _vsmMapDao;
-    
+
     ConfigurationServer _configServer;
 
     String _mountParent;
     StorageLayer _storage;
 
-    String _privateNetworkVSwitchName;
-    String _publicNetworkVSwitchName;
-    String _guestNetworkVSwitchName;
-    boolean _nexusVSwitchActive;
+    String _privateNetworkVSwitchName = "vSwitch0";
+    String _publicNetworkVSwitchName = "vSwitch0";
+    String _guestNetworkVSwitchName = "vSwitch0";
+    boolean _nexusVSwitchActive = false;
+    boolean _useDVS = false;
+    int _portsPerDvPortGroup = 256;
     String _serviceConsoleName;
     String _managemetPortGroupName;
     String _defaultSystemVmNicAdapterType = VirtualEthernetCardType.E1000.toString();
@@ -141,15 +139,15 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
     int _additionalPortRangeSize;
     int _maxHostsPerCluster;
     int _routerExtraPublicNics = 2;
-    
+
     String _cpuOverprovisioningFactor = "1";
     String _reserveCpu = "false";
-    
+
     String _memOverprovisioningFactor = "1";
     String _reserveMem = "false";
-    
+
     String _rootDiskController = DiskControllerType.ide.toString();
-    
+
     Map<String, String> _storageMounts = new HashMap<String, String>();
 
     Random _rand = new Random(System.currentTimeMillis());
@@ -217,99 +215,82 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
                 throw new ConfigurationException("Unable to find class " + value);
             }
         }
-        
+
         value = configDao.getValue(Config.VmwareUseNexusVSwitch.key());
-        if(value == null) {
-        	_nexusVSwitchActive = false;
-        }
-        else
-        {
-        	_nexusVSwitchActive = Boolean.parseBoolean(value);
+        if (value != null) {
+            _nexusVSwitchActive = Boolean.parseBoolean(value);
         }
 
-        _privateNetworkVSwitchName = configDao.getValue(Config.VmwarePrivateNetworkVSwitch.key());
-
-        if (_privateNetworkVSwitchName == null) {
-            if (_nexusVSwitchActive) {
-                _privateNetworkVSwitchName = "privateEthernetPortProfile";
-            } else {
-                _privateNetworkVSwitchName = "vSwitch0";
-            }
+        value = configDao.getValue(Config.VmwareUseDVSwitch.key());
+        if (value != null) {
+            _useDVS = Boolean.parseBoolean(value);
         }
-
-        _publicNetworkVSwitchName = configDao.getValue(Config.VmwarePublicNetworkVSwitch.key());
-
-        if (_publicNetworkVSwitchName == null) {
-            if (_nexusVSwitchActive) {
-                _publicNetworkVSwitchName = "publicEthernetPortProfile";
-            } else {
-                _publicNetworkVSwitchName = "vSwitch0";
-            }
+        // Set default physical network end points for public and guest traffic
+        // Private traffic will be only on standard vSwitch for now. See below TODO.
+        // TODO(sateesh): Assert if private traffic label indicates standard vSwitch.
+        // If not standard vSwitch we need to validate the management network configuration in the host
+        // i.e. 1) Management network should be a distributed port group
+        // 2) Specified network label should be same as that of management network if management network VLAN is tagged.
+        // This is to ensure same VLAN is not present across physical networks.
+        if (_useDVS) {
+            _publicNetworkVSwitchName = _nexusVSwitchActive ? "epp0" : "dvSwitch0";
+            _guestNetworkVSwitchName = _nexusVSwitchActive ? "epp0" : "dvSwitch0";
+            String defaultPortCount = configDao.getValue(Config.VmwarePortsPerDVPortGroup.key());
+            _portsPerDvPortGroup = Integer.parseInt(defaultPortCount);
         }
-
-        _guestNetworkVSwitchName = configDao.getValue(Config.VmwareGuestNetworkVSwitch.key());
-
-        if (_guestNetworkVSwitchName == null) {
-            if (_nexusVSwitchActive) {
-                _guestNetworkVSwitchName = "guestEthernetPortProfile";
-            } else {
-                _guestNetworkVSwitchName = "vSwitch0";
-            }
-        }
-
         _serviceConsoleName = configDao.getValue(Config.VmwareServiceConsole.key());
         if(_serviceConsoleName == null) {
             _serviceConsoleName = "Service Console";
         }
-        
+
         _managemetPortGroupName = configDao.getValue(Config.VmwareManagementPortGroup.key());
         if(_managemetPortGroupName == null) {
-        	_managemetPortGroupName = "Management Network";
+            _managemetPortGroupName = "Management Network";
         }
-        
+
         _defaultSystemVmNicAdapterType = configDao.getValue(Config.VmwareSystemVmNicDeviceType.key());
         if(_defaultSystemVmNicAdapterType == null)
             _defaultSystemVmNicAdapterType = VirtualEthernetCardType.E1000.toString();
-        
+
         _additionalPortRangeStart = NumbersUtil.parseInt(configDao.getValue(Config.VmwareAdditionalVncPortRangeStart.key()), 59000);
         if(_additionalPortRangeStart > 65535) {
-        	s_logger.warn("Invalid port range start port (" + _additionalPortRangeStart + ") for additional VNC port allocation, reset it to default start port 59000");
-        	_additionalPortRangeStart = 59000;
+            s_logger.warn("Invalid port range start port (" + _additionalPortRangeStart + ") for additional VNC port allocation, reset it to default start port 59000");
+            _additionalPortRangeStart = 59000;
         }
-        
+
         _additionalPortRangeSize = NumbersUtil.parseInt(configDao.getValue(Config.VmwareAdditionalVncPortRangeSize.key()), 1000);
         if(_additionalPortRangeSize < 0 || _additionalPortRangeStart + _additionalPortRangeSize > 65535) {
-        	s_logger.warn("Invalid port range size (" + _additionalPortRangeSize + " for range starts at " + _additionalPortRangeStart);
-        	_additionalPortRangeSize = Math.min(1000, 65535 - _additionalPortRangeStart);
+            s_logger.warn("Invalid port range size (" + _additionalPortRangeSize + " for range starts at " + _additionalPortRangeStart);
+            _additionalPortRangeSize = Math.min(1000, 65535 - _additionalPortRangeStart);
         }
-        
+
         _routerExtraPublicNics = NumbersUtil.parseInt(configDao.getValue(Config.RouterExtraPublicNics.key()), 2);
-        
+
         _maxHostsPerCluster = NumbersUtil.parseInt(configDao.getValue(Config.VmwarePerClusterHostMax.key()), VmwareManager.MAX_HOSTS_PER_CLUSTER);
         _cpuOverprovisioningFactor = configDao.getValue(Config.CPUOverprovisioningFactor.key());
         if(_cpuOverprovisioningFactor == null || _cpuOverprovisioningFactor.isEmpty())
-        	_cpuOverprovisioningFactor = "1";
+            _cpuOverprovisioningFactor = "1";
 
         _memOverprovisioningFactor = configDao.getValue(Config.MemOverprovisioningFactor.key());
         if(_memOverprovisioningFactor == null || _memOverprovisioningFactor.isEmpty())
-        	_memOverprovisioningFactor = "1";
-        
+            _memOverprovisioningFactor = "1";
+
         _reserveCpu = configDao.getValue(Config.VmwareReserveCpu.key());
         if(_reserveCpu == null || _reserveCpu.isEmpty())
-        	_reserveCpu = "false";
+            _reserveCpu = "false";
         _reserveMem = configDao.getValue(Config.VmwareReserveMem.key());
         if(_reserveMem == null || _reserveMem.isEmpty())
-        	_reserveMem = "false";
-        
+            _reserveMem = "false";
+
         _recycleHungWorker = configDao.getValue(Config.VmwareRecycleHungWorker.key());
         if(_recycleHungWorker == null || _recycleHungWorker.isEmpty())
             _recycleHungWorker = "false";
-        
+
         _rootDiskController = configDao.getValue(Config.VmwareRootDiskControllerType.key());
         if(_rootDiskController == null || _rootDiskController.isEmpty())
-        	_rootDiskController = DiskControllerType.ide.toString();
-        
-    	s_logger.info("Additional VNC port allocation range is settled at " + _additionalPortRangeStart + " to " + (_additionalPortRangeStart + _additionalPortRangeSize));
+            _rootDiskController = DiskControllerType.ide.toString();
+
+        s_logger.info("Additional VNC port allocation range is settled at " + _additionalPortRangeStart + " to " + (_additionalPortRangeStart + _additionalPortRangeSize));
 
         value = configDao.getValue("vmware.host.scan.interval");
         _hostScanInterval = NumbersUtil.parseLong(value, DEFAULT_HOST_SCAN_INTERVAL);
@@ -319,7 +300,7 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
 
         if(_configServer == null)
             _configServer = (ConfigurationServer)ComponentLocator.getComponent(ConfigurationServer.Name);
-        
+
         _agentMgr.registerForHostEvents(this, true, true, true);
 
         s_logger.info("VmwareManagerImpl has been successfully configured");
@@ -352,34 +333,21 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
         return _name;
     }
 
-    public boolean getNexusVSwitchGlobalParameter() {
-        return _nexusVSwitchActive;
-    }
-
     @Override
     public String composeWorkerName() {
         return UUID.randomUUID().toString().replace("-", "");
     }
-    
+
     @Override
     public String getPrivateVSwitchName(long dcId, HypervisorType hypervisorType) {
         return _netMgr.getDefaultManagementTrafficLabel(dcId, hypervisorType);
     }
-    
-    @Override
-    public String getPublicVSwitchName(long dcId, HypervisorType hypervisorType) {
-        return _netMgr.getDefaultPublicTrafficLabel(dcId, hypervisorType);
-    }
-    
-    @Override
-    public String getGuestVSwitchName(long dcId, HypervisorType hypervisorType) {
-        return _netMgr.getDefaultGuestTrafficLabel(dcId, hypervisorType);
-    }
-    
+
     @Override
     public List<ManagedObjectReference> addHostToPodCluster(VmwareContext serviceContext, long dcId, Long podId, Long clusterId,
             String hostInventoryPath) throws Exception {
         ManagedObjectReference mor = null;
+        String vSwitchName = "vSwitch0";
         if (serviceContext != null)
             mor = serviceContext.getHostMorByPath(hostInventoryPath);
         String privateTrafficLabel = null;
@@ -399,68 +367,58 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
                 HostMO hostMo = new HostMO(serviceContext, hosts[0]);
                 HostFirewallSystemMO firewallMo = hostMo.getHostFirewallSystemMO();
                 if(firewallMo != null) {
-            		if(hostMo.getHostType() == VmwareHostType.ESX) {
-            		    
-	                    firewallMo.enableRuleset("vncServer");
-	                    firewallMo.refreshFirewall();
-            		}
+                    if(hostMo.getHostType() == VmwareHostType.ESX) {
+
+                        firewallMo.enableRuleset("vncServer");
+                        firewallMo.refreshFirewall();
+                    }
                 }
 
                 // prepare at least one network on the vswitch to enable OVF importing
                 String vlanId = null;
                 if(privateTrafficLabel != null) {
-                	String[] tokens = privateTrafficLabel.split(",");
-                	if(tokens.length == 2)
-                		vlanId = tokens[1];
+                    String[] tokens = privateTrafficLabel.split(",");
+                    if(tokens.length == 2) {
+                        vlanId = tokens[1];
+                    }
+                    vSwitchName = tokens[0].trim();
                 }
-
-                if(!_nexusVSwitchActive) {
-                	HypervisorHostHelper.prepareNetwork(_privateNetworkVSwitchName, "cloud.private", hostMo, vlanId, null, null, 180000, false);
-                }
-                else {
-                    s_logger.info("Preparing Network on " + privateTrafficLabel);
-                    HypervisorHostHelper.prepareNetwork(privateTrafficLabel, "cloud.private", hostMo, vlanId, null, null, 180000);
-                }
+                HypervisorHostHelper.prepareNetwork(_privateNetworkVSwitchName, "cloud.private", hostMo, vlanId, null, null, 180000, false);
                 returnedHostList.add(hosts[0]);
                 return returnedHostList;
             } else if(mor.getType().equals("ClusterComputeResource")) {
                 ManagedObjectReference[] hosts = (ManagedObjectReference[])serviceContext.getServiceUtil().getDynamicProperty(mor, "host");
                 assert(hosts != null);
-                
+
                 if(hosts.length > _maxHostsPerCluster) {
-                	String msg = "vCenter cluster size is too big (current configured cluster size: " + _maxHostsPerCluster + ")";
-                	s_logger.error(msg);
-                	throw new DiscoveredWithErrorException(msg);
+                    String msg = "vCenter cluster size is too big (current configured cluster size: " + _maxHostsPerCluster + ")";
+                    s_logger.error(msg);
+                    throw new DiscoveredWithErrorException(msg);
                 }
-                
+
                 for(ManagedObjectReference morHost: hosts) {
                     // For ESX host, we need to enable host firewall to allow VNC access
                     HostMO hostMo = new HostMO(serviceContext, morHost);
                     HostFirewallSystemMO firewallMo = hostMo.getHostFirewallSystemMO();
                     if(firewallMo != null) {
-                		if(hostMo.getHostType() == VmwareHostType.ESX) {
-	                        firewallMo.enableRuleset("vncServer");
-	                        firewallMo.refreshFirewall();
-                		}
+                        if(hostMo.getHostType() == VmwareHostType.ESX) {
+                            firewallMo.enableRuleset("vncServer");
+                            firewallMo.refreshFirewall();
+                        }
                     }
 
                     String vlanId = null;
                     if(privateTrafficLabel != null) {
                         String[] tokens = privateTrafficLabel.split(",");
-                        if(tokens.length == 2)
-                            vlanId = tokens[1];
+                        if(tokens.length == 2) {
+                            vlanId = tokens[1].trim();
+                        }
+                        vSwitchName = tokens[0].trim();
                     }
-                    
-                    
+
                     s_logger.info("Calling prepareNetwork : " + hostMo.getContext().toString());
                     // prepare at least one network on the vswitch to enable OVF importing
-                    if(!_nexusVSwitchActive) {
-                    	HypervisorHostHelper.prepareNetwork(_privateNetworkVSwitchName, "cloud.private", hostMo, vlanId, null, null, 180000, false);
-                    }
-                    else {
-                        s_logger.info("Preparing Network on " + privateTrafficLabel);
-                        HypervisorHostHelper.prepareNetwork(privateTrafficLabel, "cloud.private", hostMo, vlanId, null, null, 180000);
-                    }
+                    HypervisorHostHelper.prepareNetwork(vSwitchName, "cloud.private", hostMo, vlanId, null, null, 180000, false);
                     returnedHostList.add(morHost);
                 }
                 return returnedHostList;
@@ -469,27 +427,23 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
                 HostMO hostMo = new HostMO(serviceContext, mor);
                 HostFirewallSystemMO firewallMo = hostMo.getHostFirewallSystemMO();
                 if(firewallMo != null) {
-            		if(hostMo.getHostType() == VmwareHostType.ESX) {
-	                    firewallMo.enableRuleset("vncServer");
-	                    firewallMo.refreshFirewall();
-            		}
+                    if(hostMo.getHostType() == VmwareHostType.ESX) {
+                        firewallMo.enableRuleset("vncServer");
+                        firewallMo.refreshFirewall();
+                    }
                 }
 
                 String vlanId = null;
                 if(privateTrafficLabel != null) {
                     String[] tokens = privateTrafficLabel.split(",");
-                    if(tokens.length == 2)
+                    if(tokens.length == 2) {
                         vlanId = tokens[1];
+                    }
+                    vSwitchName = tokens[0].trim();
                 }
 
                 // prepare at least one network on the vswitch to enable OVF importing
-                if(!_nexusVSwitchActive) {
-                	HypervisorHostHelper.prepareNetwork(_privateNetworkVSwitchName, "cloud.private", hostMo, vlanId, null, null, 180000, false);
-                }
-                else {
-                    s_logger.info("Preparing Network on " + privateTrafficLabel);
-                    HypervisorHostHelper.prepareNetwork(privateTrafficLabel, "cloud.private", hostMo, vlanId, null, null, 180000);
-                }
+                HypervisorHostHelper.prepareNetwork(vSwitchName, "cloud.private", hostMo, vlanId, null, null, 180000, false);
                 returnedHostList.add(mor);
                 return returnedHostList;
             } else {
@@ -542,33 +496,32 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
 
     @Override
     public String getSecondaryStorageStoreUrl(long dcId) {
-    	List<HostVO> secStorageHosts = _ssvmMgr.listSecondaryStorageHostsInOneZone(dcId);
-    	if(secStorageHosts.size() > 0)
-    		return secStorageHosts.get(0).getStorageUrl();
-    	
+        List<HostVO> secStorageHosts = _ssvmMgr.listSecondaryStorageHostsInOneZone(dcId);
+        if(secStorageHosts.size() > 0)
+            return secStorageHosts.get(0).getStorageUrl();
+
         return null;
     }
 
-	public String getServiceConsolePortGroupName() {
-		return _serviceConsoleName;
-	}
-	
-	public String getManagementPortGroupName() {
-		return _managemetPortGroupName;
-	}
-    
+    @Override
+    public String getServiceConsolePortGroupName() {
+        return _serviceConsoleName;
+    }
+
+    @Override
+    public String getManagementPortGroupName() {
+        return _managemetPortGroupName;
+    }
+
     @Override
     public String getManagementPortGroupByHost(HostMO hostMo) throws Exception {
-    	if(hostMo.getHostType() == VmwareHostType.ESXi)
-    		return  this._managemetPortGroupName;
+        if(hostMo.getHostType() == VmwareHostType.ESXi)
+            return  this._managemetPortGroupName;
         return this._serviceConsoleName;
     }
-    
+
     @Override
     public void setupResourceStartupParams(Map<String, Object> params) {
-        params.put("private.network.vswitch.name", _privateNetworkVSwitchName);
-        params.put("public.network.vswitch.name", _publicNetworkVSwitchName);
-        params.put("guest.network.vswitch.name", _guestNetworkVSwitchName);
         params.put("vmware.use.nexus.vswitch", _nexusVSwitchActive);
         params.put("service.console.name", _serviceConsoleName);
         params.put("management.portgroup.name", _managemetPortGroupName);
@@ -578,6 +531,8 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
         params.put("vmware.reserve.mem", _reserveMem);
         params.put("vmware.root.disk.controller", _rootDiskController);
         params.put("vmware.recycle.hung.wokervm", _recycleHungWorker);
+        params.put("ports.per.dvportgroup", _portsPerDvPortGroup);
+        params.put("vmware.use.dvswitch", _useDVS);
     }
 
     @Override
@@ -585,20 +540,20 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
         return _storageMgr;
     }
 
-    
+
     @Override
-	public long pushCleanupCheckpoint(String hostGuid, String vmName) {
+    public long pushCleanupCheckpoint(String hostGuid, String vmName) {
         return _checkPointMgr.pushCheckPoint(new VmwareCleanupMaid(hostGuid, vmName));
     }
-    
+
     @Override
-	public void popCleanupCheckpoint(long checkpoint) {
-    	_checkPointMgr.popCheckPoint(checkpoint);
+    public void popCleanupCheckpoint(long checkpoint) {
+        _checkPointMgr.popCheckPoint(checkpoint);
     }
-    
+
     @Override
-	public void gcLeftOverVMs(VmwareContext context) {
-    	VmwareCleanupMaid.gcLeftOverVMs(context);
+    public void gcLeftOverVMs(VmwareContext context) {
+        VmwareCleanupMaid.gcLeftOverVMs(context);
     }
 
     @Override
@@ -623,19 +578,19 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
                     if(!destIso.exists()) {
                         s_logger.info("Inject SSH key pairs before copying systemvm.iso into secondary storage");
                         _configServer.updateKeyPairs();
-                        
-	                    try {
-	                        FileUtil.copyfile(srcIso, destIso);
-	                    } catch(IOException e) {
-	                    	s_logger.error("Unexpected exception ", e);
-	                    	
-	                        String msg = "Unable to copy systemvm ISO on secondary storage. src location: " + srcIso.toString() + ", dest location: " + destIso;
-	                        s_logger.error(msg);
-	                        throw new CloudRuntimeException(msg);
-	                    }
+
+                        try {
+                            FileUtil.copyfile(srcIso, destIso);
+                        } catch(IOException e) {
+                            s_logger.error("Unexpected exception ", e);
+
+                            String msg = "Unable to copy systemvm ISO on secondary storage. src location: " + srcIso.toString() + ", dest location: " + destIso;
+                            s_logger.error(msg);
+                            throw new CloudRuntimeException(msg);
+                        }
                     } else {
-                    	if(s_logger.isTraceEnabled())
-                    		s_logger.trace("SystemVM ISO file " + destIso.getPath() + " already exists");
+                        if(s_logger.isTraceEnabled())
+                            s_logger.trace("SystemVM ISO file " + destIso.getPath() + " already exists");
                     }
                 } finally {
                     lock.unlock();
@@ -645,19 +600,19 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
             lock.releaseRef();
         }
     }
-   
+
     @Override
     public String getSystemVMIsoFileNameOnDatastore() {
         String version = ComponentLocator.class.getPackage().getImplementationVersion();
         String fileName = "systemvm-" + version + ".iso";
         return fileName.replace(':', '-');
     }
-    
+
     @Override
     public String getSystemVMDefaultNicAdapterType() {
         return this._defaultSystemVmNicAdapterType;
     }
-    
+
     private File getSystemVMPatchIsoFile() {
         // locate systemvm.iso
         URL url = ComponentLocator.class.getProtectionDomain().getCodeSource().getLocation();
@@ -866,7 +821,7 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
                 if(checkPointIdStr != null) {
                     _checkPointMgr.popCheckPoint(Long.parseLong(checkPointIdStr));
                 }
-                
+
                 checkPointIdStr = answer.getContextParam("checkpoint2");
                 if(checkPointIdStr != null) {
                     _checkPointMgr.popCheckPoint(Long.parseLong(checkPointIdStr));
@@ -897,9 +852,9 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
             }
         }
     }
-    
+
     protected final int DEFAULT_DOMR_SSHPORT = 3922;
-    
+
     protected boolean shutdownRouterVM(DomainRouterVO router) {
         if (s_logger.isDebugEnabled()) {
             s_logger.debug("Try to shutdown router VM " + router.getInstanceName() + " directly.");
@@ -943,31 +898,31 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
     public boolean processTimeout(long agentId, long seq) {
         return false;
     }
-    
+
     @Override
     public boolean beginExclusiveOperation(int timeOutSeconds) {
         return _exclusiveOpLock.lock(timeOutSeconds);
     }
-    
+
     @Override
     public void endExclusiveOperation() {
         _exclusiveOpLock.unlock();
     }
-    
+
     @Override
-	public Pair<Integer, Integer> getAddiionalVncPortRange() {
-    	return new Pair<Integer, Integer>(_additionalPortRangeStart, _additionalPortRangeSize);
+    public Pair<Integer, Integer> getAddiionalVncPortRange() {
+        return new Pair<Integer, Integer>(_additionalPortRangeStart, _additionalPortRangeSize);
     }
-    
+
     @Override
     public int getMaxHostsPerCluster() {
-    	return this._maxHostsPerCluster;
+        return this._maxHostsPerCluster;
     }
-    
+
     @Override
-	public int getRouterExtraPublicNics() {
-		return this._routerExtraPublicNics;
-	}
+    public int getRouterExtraPublicNics() {
+        return this._routerExtraPublicNics;
+    }
 
     @Override
     public Map<String, String> getNexusVSMCredentialsByClusterId(Long clusterId) {
@@ -977,7 +932,7 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
         vsmMapVO = _vsmMapDao.findByClusterId(clusterId);
         long vsmId = 0;
         if (vsmMapVO != null) {
-            vsmId = vsmMapVO.getVsmId(); 
+            vsmId = vsmMapVO.getVsmId();
             s_logger.info("vsmId is " + vsmId);
             nexusVSM = _nexusDao.findById(vsmId);
             s_logger.info("Fetching nexus vsm credentials from database.");
@@ -985,7 +940,7 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
         else {
             s_logger.info("Found empty vsmMapVO.");
             return null;
-        }        
+        }
 
         Map<String, String> nexusVSMCredentials = new HashMap<String, String>();
         if (nexusVSM != null) {
@@ -995,5 +950,15 @@ public class VmwareManagerImpl implements VmwareManager, VmwareStorageMount, Lis
             s_logger.info("Successfully fetched the credentials of Nexus VSM.");
         }
         return nexusVSMCredentials;
+    }
+
+    @Override
+    public boolean getNexusVSwitchGlobalParameter() {
+        return _nexusVSwitchActive;
+    }
+
+    @Override
+    public boolean getUseDVSwitchGlobalParameter() {
+        return _useDVS;
     }
 }

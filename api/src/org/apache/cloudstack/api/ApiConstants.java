@@ -16,7 +16,6 @@
 // under the License.
 package org.apache.cloudstack.api;
 
-import org.omg.CORBA.PUBLIC_MEMBER;
 
 public class ApiConstants {
     public static final String ACCOUNT = "account";
@@ -368,6 +367,8 @@ public class ApiConstants {
     public static final String VSM_CONFIG_STATE = "vsmconfigstate";
     public static final String VSM_DEVICE_STATE = "vsmdevicestate";
     public static final String ADD_VSM_FLAG = "addvsmflag";
+    public static final String VSWITCH_TYPE_GUEST_TRAFFIC = "vswitchtypeguest";
+    public static final String VSWITCH_TYPE_PUBLIC_TRAFFIC = "vswitchtypepublic";
     public static final String VPC_OFF_ID = "vpcofferingid";
     public static final String NETWORK = "network";
     public static final String VPC_ID = "vpcid";

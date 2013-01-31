@@ -20,14 +20,17 @@ package org.apache.cloudstack.api.command.admin.cluster;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.cloudstack.api.*;
-import org.apache.log4j.Logger;
-
 import org.apache.cloudstack.api.APICommand;
+import org.apache.cloudstack.api.ApiConstants;
+import org.apache.cloudstack.api.ApiErrorCode;
+import org.apache.cloudstack.api.BaseCmd;
+import org.apache.cloudstack.api.Parameter;
+import org.apache.cloudstack.api.ServerApiException;
 import org.apache.cloudstack.api.response.ClusterResponse;
 import org.apache.cloudstack.api.response.ListResponse;
 import org.apache.cloudstack.api.response.PodResponse;
 import org.apache.cloudstack.api.response.ZoneResponse;
+import org.apache.log4j.Logger;
 
 import com.cloud.exception.DiscoveryException;
 import com.cloud.exception.ResourceInUseException;
@@ -77,6 +80,20 @@ public class AddClusterCmd extends BaseCmd {
 
     @Parameter(name = ApiConstants.VSM_IPADDRESS, type = CommandType.STRING, required = false, description = "the ipaddress of the VSM associated with this cluster")
     private String vsmipaddress;
+
+    @Parameter(name = ApiConstants.VSWITCH_TYPE_GUEST_TRAFFIC, type = CommandType.STRING, required = false, description = "Type of virtual switch used for guest traffic in the cluster. Allowed values are, vmwaresvs (for VMware standard vSwitch) and vmwaredvs (for VMware distributed vSwitch)")
+    private String vSwitchTypeGuestTraffic;
+
+    @Parameter(name = ApiConstants.VSWITCH_TYPE_PUBLIC_TRAFFIC, type = CommandType.STRING, required = false, description = "Type of virtual switch used for public traffic in the cluster. Allowed values are, vmwaresvs (for VMware standard vSwitch) and vmwaredvs (for VMware distributed vSwitch)")
+    private String vSwitchTypePublicTraffic;
+
+    public String getVSwitchTypeGuestTraffic() {
+        return vSwitchTypeGuestTraffic;
+    }
+
+    public String getVSwitchTypePublicTraffic() {
+        return vSwitchTypePublicTraffic;
+    }
 
     public String getVSMIpaddress() {
         return vsmipaddress;

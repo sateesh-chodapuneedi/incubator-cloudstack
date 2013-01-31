@@ -71,7 +71,5 @@ public interface VmwareManager {
 
     String getPrivateVSwitchName(long dcId, HypervisorType hypervisorType);
 
-    String getPublicVSwitchName(long dcId, HypervisorType hypervisorType);
-
-    String getGuestVSwitchName(long dcId, HypervisorType hypervisorType);
+    boolean getUseDVSwitchGlobalParameter();
 }

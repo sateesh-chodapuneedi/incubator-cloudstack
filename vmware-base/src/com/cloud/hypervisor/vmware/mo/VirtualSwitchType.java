@@ -18,7 +18,33 @@
 package com.cloud.hypervisor.vmware.mo;
 
 public enum VirtualSwitchType {
-	StandardVirtualSwitch,
-	VMwareDistributedVirtualSwitch,
-	NexusDistributedVirtualSwitch,
+    None,
+    StandardVirtualSwitch,
+    VMwareDistributedVirtualSwitch,
+    NexusDistributedVirtualSwitch;
+
+    public static VirtualSwitchType getType(String vSwitchType) {
+        if (vSwitchType == null) {
+            return VirtualSwitchType.StandardVirtualSwitch;
+        } else if (vSwitchType.equalsIgnoreCase("vmwaredvs")) {
+            return VirtualSwitchType.VMwareDistributedVirtualSwitch;
+        } else if (vSwitchType.equalsIgnoreCase("nexusdvs")) {
+            return VirtualSwitchType.NexusDistributedVirtualSwitch;
+        } else if (vSwitchType.equalsIgnoreCase("vmwaresvs")) {
+            return VirtualSwitchType.StandardVirtualSwitch;
+        }
+        return VirtualSwitchType.None;
+    }
+
+    @Override
+    public String toString() {
+        if (this == VirtualSwitchType.StandardVirtualSwitch) {
+            return "vmwaresvs";
+        } else if (this == VirtualSwitchType.VMwareDistributedVirtualSwitch) {
+            return "vmwaredvs";
+        } else if (this == VirtualSwitchType.NexusDistributedVirtualSwitch) {
+            return "nexusdvs";
+        }
+        return "";
+    }
 }

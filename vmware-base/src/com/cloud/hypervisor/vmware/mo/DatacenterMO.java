@@ -34,9 +34,7 @@ import com.vmware.vim25.PropertyFilterSpec;
 import com.vmware.vim25.PropertySpec;
 import com.vmware.vim25.SelectionSpec;
 import com.vmware.vim25.TraversalSpec;
-import com.vmware.vim25.VirtualDeviceBackingInfo;
 import com.vmware.vim25.VirtualEthernetCardDistributedVirtualPortBackingInfo;
-import com.vmware.vim25.VirtualEthernetCardNetworkBackingInfo;
 
 public class DatacenterMO extends BaseMO {
 	
@@ -469,5 +467,14 @@ public class DatacenterMO extends BaseMO {
         System.out.println("Plugging NIC device into network " + networkInfo.second() + " backed by dvSwitch: "
                 + dvSwitchUuid);
         return dvPortBacking;
+    }
+
+    public ManagedObjectReference getDvSwitchMor(String dvSwitchName) throws Exception {
+        String dvPortGroupKey = null;
+        ManagedObjectReference dvSwitchMor = null;
+        ManagedObjectReference networkFolderMor = null;
+        networkFolderMor = _context.getServiceUtil().getMoRefProp(_mor, "networkFolder");
+        dvSwitchMor = _context.getServiceUtil().getDecendentMoRef(networkFolderMor, "VmwareDistributedVirtualSwitch", dvSwitchName);
+        return dvSwitchMor;
     }
 }
